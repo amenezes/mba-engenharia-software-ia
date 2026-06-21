@@ -23,7 +23,7 @@ Métricas Base:
 ✅ STATUS: APROVADO - Todas as métricas >= 0.8
 ```
 
-Dashboard LangSmith: https://smith.langchain.com/prompts
+Dashboard LangSmith: https://smith.langchain.com/hub/mba-ia-amenezes/bug_to_user_story_v2
 
 ---
 
@@ -133,11 +133,18 @@ Contexto Técnico:
 
 ### Dashboard LangSmith
 
-- **Prompt publicado:** `mba-ia-amenezes/bug_to_user_story_v2` (público)
+- **Prompt publicado (público):** https://smith.langchain.com/hub/mba-ia-amenezes/bug_to_user_story_v2
 - **Dataset:** 15 exemplos (5 simples, 7 médios, 3 complexos)
-- **Dashboard:** https://smith.langchain.com/prompts
 
-> Screenshots das avaliações e tracing detalhado estão disponíveis no dashboard do LangSmith.
+### Screenshots
+
+| Evidência | Imagem |
+|-----------|--------|
+| Avaliação com as 5 métricas ≥ 0.8 (STATUS: APROVADO) | ![Avaliação aprovada](assets/eval_aprovado.png) |
+| Tracing detalhado — exemplo 1 | ![Tracing exemplo 1](assets/tracing_exemplo_1.png) |
+| Tracing detalhado — exemplo 2 | ![Tracing exemplo 2](assets/tracing_exemplo_2.png) |
+| Tracing detalhado — exemplo 3 | ![Tracing exemplo 3](assets/tracing_exemplo_3.png) |
+| Dataset com 15 exemplos no LangSmith | ![Dataset](assets/dataset_15_exemplos.png) |
 
 ---
 
@@ -242,12 +249,8 @@ mba-engenharia-software-ia/
 │   ├── metrics.py            # 5 métricas LLM-as-Judge (pronto)
 │   └── utils.py              # Funções auxiliares (pronto)
 │
-├── tests/
-│   └── test_prompts.py       # 6 testes de validação (implementado)
-│
-└── adr/
-    ├── adr-1.md              # Documento original do desafio
-    └── adr-2.md              # Plano de implementação
+└── tests/
+    └── test_prompts.py       # 6 testes de validação (implementado)
 ```
 
 ### O que foi implementado
