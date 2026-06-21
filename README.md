@@ -147,7 +147,8 @@ Contexto Técnico:
 
 - Python 3.12+
 - Conta no [LangSmith](https://smith.langchain.com/) (gratuita)
-- Chave de API do [OpenRouter](https://openrouter.ai/keys) (recomendado) **OU** Google Gemini **OU** OpenAI
+- Chave de API do [Google Gemini](https://aistudio.google.com/app/apikey) (default, gratuito) **OU** [OpenAI](https://platform.openai.com/api-keys)
+- (Opcional/Plus) Chave do [OpenRouter](https://openrouter.ai/keys) para contornar o rate limit do free tier do Gemini
 
 ### 1. Configuração do ambiente
 
@@ -173,27 +174,27 @@ Editar o `.env` com suas credenciais:
 LANGSMITH_API_KEY=<sua_chave>
 USERNAME_LANGSMITH_HUB=<seu_username>
 
-# Opção A: OpenRouter (recomendado — Gemini sem rate limit)
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-or-v1-<sua_chave_openrouter>
-OPENAI_API_BASE=https://openrouter.ai/api/v1
-LLM_MODEL=google/gemini-2.5-flash
-EVAL_MODEL=google/gemini-2.5-flash
+# Opção A: Google Gemini (default, gratuito: 15 req/min, 1500 req/dia)
+LLM_PROVIDER=google
+GOOGLE_API_KEY=<sua_chave>
+LLM_MODEL=gemini-2.5-flash
+EVAL_MODEL=gemini-2.5-flash
 
-# Opção B: Google Gemini direto (rate limit: 20 req/dia free tier)
-# LLM_PROVIDER=google
-# GOOGLE_API_KEY=<sua_chave>
-# LLM_MODEL=gemini-2.5-flash
-# EVAL_MODEL=gemini-2.5-flash
-
-# Opção C: OpenAI
+# Opção B: OpenAI (alternativa oficial)
 # LLM_PROVIDER=openai
 # OPENAI_API_KEY=<sua_chave>
 # LLM_MODEL=gpt-4o-mini
 # EVAL_MODEL=gpt-4o
+
+# Opção C (PLUS OPCIONAL): OpenRouter — Gemini sem rate limit do free tier
+# LLM_PROVIDER=openai
+# OPENAI_API_KEY=sk-or-v1-<sua_chave_openrouter>
+# OPENAI_API_BASE=https://openrouter.ai/api/v1
+# LLM_MODEL=google/gemini-2.5-flash
+# EVAL_MODEL=google/gemini-2.5-flash
 ```
 
-> **Nota sobre o OpenRouter:** Para descobrir seu username do LangSmith Hub, publique qualquer prompt no Hub e clique no ícone de cadeado (🔒).
+> **Como descobrir seu username do LangSmith Hub:** publique qualquer prompt no Hub, abra-o e clique no ícone de cadeado (🔒) para visualizar seu username.
 
 ### 3. Executar o pipeline completo
 
@@ -221,7 +222,7 @@ pytest tests/test_prompts.py -v
 ## Estrutura do Projeto
 
 ```
-mba-ia-pull-evaluation-prompt/
+mba-engenharia-software-ia/
 ├── .env.example              # Template das variáveis de ambiente
 ├── requirements.txt          # Dependências Python
 ├── README.md                 # Esta documentação
@@ -272,5 +273,7 @@ mba-ia-pull-evaluation-prompt/
 - **Linguagem:** Python 3.12+
 - **Framework:** LangChain 0.3.13
 - **Avaliação:** LangSmith
-- **LLM:** Google Gemini 2.5 Flash (via OpenRouter)
+- **LLM (default):** Google Gemini 2.5 Flash
+- **LLM (alternativa):** OpenAI
+- **Plus opcional:** OpenRouter (Gemini sem rate limit do free tier)
 - **Testes:** pytest 8.3.4
