@@ -39,7 +39,7 @@ def list_tasks():
 def get_task(task_id):
     task = db.session.get(Task, task_id)
     if not task:
-        raise ValidationError('Task nao encontrada', 404)
+        raise ValidationError('Task não encontrada', 404)
     data = task.to_dict()
     data['overdue'] = task.is_overdue()
     return data
@@ -47,25 +47,25 @@ def get_task(task_id):
 
 def _resolve_references(user_id, category_id):
     if user_id and not db.session.get(User, user_id):
-        raise ValidationError('Usuario nao encontrado', 404)
+        raise ValidationError('Usuário não encontrado', 404)
     if category_id and not db.session.get(Category, category_id):
-        raise ValidationError('Categoria nao encontrada', 404)
+        raise ValidationError('Categoria não encontrada', 404)
 
 
 def _validate_task_fields(title, status, priority):
     if not title:
-        raise ValidationError('Titulo e obrigatorio')
+        raise ValidationError('Título é obrigatório')
     if len(title) < TITULO_MIN or len(title) > TITULO_MAX:
-        raise ValidationError('Titulo com tamanho invalido')
+        raise ValidationError('Título com tamanho inválido')
     if status not in TASK_STATUS_VALIDOS:
-        raise ValidationError('Status invalido')
+        raise ValidationError('Status inválido')
     if priority < PRIORITY_MIN or priority > PRIORITY_MAX:
         raise ValidationError('Prioridade deve ser entre 1 e 5')
 
 
 def create_task(data):
     if not data:
-        raise ValidationError('Dados invalidos')
+        raise ValidationError('Dados inválidos')
 
     title = data.get('title')
     status = data.get('status', 'pending')
@@ -90,7 +90,7 @@ def create_task(data):
         try:
             task.due_date = datetime.strptime(due_date, DATE_FORMAT)
         except ValueError:
-            raise ValidationError('Formato de data invalido. Use YYYY-MM-DD')
+            raise ValidationError('Formato de data inválido. Use YYYY-MM-DD')
 
     tags = data.get('tags')
     if tags:
@@ -104,19 +104,19 @@ def create_task(data):
 def update_task(task_id, data):
     task = db.session.get(Task, task_id)
     if not task:
-        raise ValidationError('Task nao encontrada', 404)
+        raise ValidationError('Task não encontrada', 404)
     if not data:
-        raise ValidationError('Dados invalidos')
+        raise ValidationError('Dados inválidos')
 
     if 'title' in data:
         if len(data['title']) < TITULO_MIN or len(data['title']) > TITULO_MAX:
-            raise ValidationError('Titulo com tamanho invalido')
+            raise ValidationError('Título com tamanho inválido')
         task.title = data['title']
     if 'description' in data:
         task.description = data['description']
     if 'status' in data:
         if data['status'] not in TASK_STATUS_VALIDOS:
-            raise ValidationError('Status invalido')
+            raise ValidationError('Status inválido')
         task.status = data['status']
     if 'priority' in data:
         if data['priority'] < PRIORITY_MIN or data['priority'] > PRIORITY_MAX:
@@ -124,18 +124,18 @@ def update_task(task_id, data):
         task.priority = data['priority']
     if 'user_id' in data:
         if data['user_id'] and not db.session.get(User, data['user_id']):
-            raise ValidationError('Usuario nao encontrado', 404)
+            raise ValidationError('Usuário não encontrado', 404)
         task.user_id = data['user_id']
     if 'category_id' in data:
         if data['category_id'] and not db.session.get(Category, data['category_id']):
-            raise ValidationError('Categoria nao encontrada', 404)
+            raise ValidationError('Categoria não encontrada', 404)
         task.category_id = data['category_id']
     if 'due_date' in data:
         if data['due_date']:
             try:
                 task.due_date = datetime.strptime(data['due_date'], DATE_FORMAT)
             except ValueError:
-                raise ValidationError('Formato de data invalido')
+                raise ValidationError('Formato de data inválido')
         else:
             task.due_date = None
     if 'tags' in data:
@@ -151,7 +151,7 @@ def update_task(task_id, data):
 def delete_task(task_id):
     task = db.session.get(Task, task_id)
     if not task:
-        raise ValidationError('Task nao encontrada', 404)
+        raise ValidationError('Task não encontrada', 404)
     db.session.delete(task)
     db.session.commit()
     return task_id

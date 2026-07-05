@@ -26,11 +26,11 @@ def create_app() -> Flask:
 
     @app.route('/health')
     def health():
-        return {'status': 'ok', 'versao': '2.0.0', 'arquitetura': 'MVC'}
+        return {'status': 'ok', 'versão': '2.0.0', 'arquitetura': 'MVC'}
 
     @app.route('/')
     def index():
-        return {'message': 'Task Manager API', 'version': '2.0', 'arquitetura': 'MVC'}
+        return {'mensagem': 'Task Manager API', 'versão': '2.0', 'arquitetura': 'MVC'}
 
     register_error_handlers(app)
 

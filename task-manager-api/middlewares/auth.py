@@ -22,7 +22,7 @@ def login_required(f):
                 token, current_app.config['SECRET_KEY'], algorithms=['HS256']
             )
         except jwt.PyJWTError:
-            return jsonify({'error': 'Token invalido'}), 401
+            return jsonify({'error': 'Token inválido'}), 401
         request.current_user = payload
         return f(*args, **kwargs)
 
