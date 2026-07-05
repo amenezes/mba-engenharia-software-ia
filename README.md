@@ -44,7 +44,7 @@ com checkout (users, courses, enrollments, payments, audit_logs).
 | 1 | CRITICAL | Secrets hardcoded incluindo chave `pk_live` do Stripe | `utils.js:2-7` | Senha de DB e chave de pagamento LIVE commitadas no repo; sem `.env`/`.gitignore` — qualquer leak compromete tudo |
 | 2 | CRITICAL | "Hash" de senha com Base64 em loop (trivialmente reversível) | `utils.js:17-23` | Base64 é codificação, não criptografia; sem salt, colisões massivas; senha default `"123456"` aceita |
 | 3 | CRITICAL | Número de cartão e chave do gateway logados em stdout | `AppManager.js:45` | Violação direta do PCI-DSS (PAN nunca deve ser logado em claro); logs costumam ir para agregadores |
-| 4 | HIGH | God Class: uma classe detém DB, schema, rotas, regras e pagamento | `AppManager.js:4-141` | `setupRoutes()` tem ~114 linhas com SQL, pagamento, auditoria embutidos; incontrolável e incontrolável de testar |
+| 4 | HIGH | God Class: uma classe detém DB, schema, rotas, regras e pagamento | `AppManager.js:4-141` | `setupRoutes()` tem ~114 linhas com SQL, pagamento, auditoria embutidos; incontrolável e impossível de testar |
 | 5 | HIGH | N+1 quadrático no relatório financeiro | `AppManager.js:83-127` | 1+C+E+2E queries (courses, enrollments, users, payments) que poderiam ser um único JOIN |
 | 6 | MEDIUM | Estado mutável global sem TTL/evicção | `utils.js:9-10` | `globalCache` cresce indefinidamente (vazamento de memória); `totalRevenue` compartilhado entre requisições |
 | 7 | MEDIUM | Callback hell de 5 níveis sem transação | `AppManager.js:37-77` | Inserções de enrollment/payment/audit não transacionais; crash no meio deixa DB inconsistente |
