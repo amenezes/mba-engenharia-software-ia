@@ -24,14 +24,20 @@ def executar_query():
     query = dados.get("sql", "")
     if not query:
         return jsonify({"erro": "Query nao informada"}), 400
+
+    # Apenas SELECT read-only: valida o prefixo ANTES de executar e bloqueia
+    # stacking de statements (";") para evitar SQL arbitrario (DROP/DELETE/...).
+    normalized = query.strip()
+    if ";" in normalized.rstrip(";"):
+        return jsonify({"erro": "Consultas multiplas nao sao permitidas"}), 403
+    if not normalized.upper().startswith("SELECT"):
+        return jsonify({"erro": "Apenas consultas SELECT sao permitidas"}), 403
+
     db = get_db()
     cursor = db.cursor()
     try:
-        cursor.execute(query)
-        if query.strip().upper().startswith("SELECT"):
-            rows = cursor.fetchall()
-            return jsonify({"dados": [dict(r) for r in rows], "sucesso": True}), 200
-        db.commit()
-        return jsonify({"mensagem": "Query executada", "sucesso": True}), 200
+        cursor.execute(normalized)
+        rows = cursor.fetchall()
+        return jsonify({"dados": [dict(r) for r in rows], "sucesso": True}), 200
     except Exception as e:
         return jsonify({"erro": str(e)}), 500

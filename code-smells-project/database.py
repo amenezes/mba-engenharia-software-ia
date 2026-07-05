@@ -83,9 +83,9 @@ def _seed(db):
         produtos,
     )
     usuarios_seed = [
-        ("Admin", "admin@loja.com", generate_password_hash("admin123"), "admin"),
-        ("Joao Silva", "joao@email.com", generate_password_hash("123456"), "cliente"),
-        ("Maria Santos", "maria@email.com", generate_password_hash("senha123"), "cliente"),
+        ("Admin", "admin@loja.com", generate_password_hash(Config.SEED_ADMIN_PASSWORD), "admin"),
+        ("Joao Silva", "joao@email.com", generate_password_hash(Config.SEED_CLIENT_PASSWORD), "cliente"),
+        ("Maria Santos", "maria@email.com", generate_password_hash(Config.SEED_CLIENT2_PASSWORD), "cliente"),
     ]
     cursor.executemany(
         "INSERT INTO usuarios (nome, email, senha, tipo) VALUES (?, ?, ?, ?)",

@@ -1,10 +1,10 @@
 ---
 name: refactor-arch
 description: Analisa, audita e refatora projetos legados para o padrao MVC de forma
-  agnostica de tecnologia (Python/Flask e Node.js/Express). Detecta stack e dominio,
-  identifica anti-patterns com severidade e arquivo/linha exatos, gera relatorio de
-  auditoria estruturado e refatora preservando o funcionamento da aplicacao. Use
-  quando precisar modernizar uma codebase para MVC.
+  agnostica de tecnologia. Detecta stack e dominio, identifica anti-patterns com
+  severidade e arquivo/linha exatos, gera relatorio de auditoria estruturado e
+  refatora preservando o funcionamento da aplicacao. Use quando precisar modernizar
+  uma codebase para MVC.
 disable-model-invocation: true
 allowed-tools: Read, Grep, Glob, Bash, Edit, Write
 ---
@@ -14,8 +14,9 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write
 Skill agnostica de tecnologia que executa **3 fases sequenciais** para modernizar
 uma codebase para o padrao MVC: **Analise → Auditoria → Refatoracao**.
 
-IMPORTANTE: A skill DEVE funcionar em projetos Python/Flask e Node.js/Express sem
-qualquer alteracao. Nunca assuma a linguagem — detecte-a lendo manifestos.
+IMPORTANTE: A skill detecta a stack lendo os manifestos do projeto (requirements.txt,
+package.json, etc.). Nunca assuma a linguagem — ela deve funcionar com diferentes
+linguagens e frameworks sem qualquer alteracao.
 
 ## Fluxo de execucao
 
@@ -42,6 +43,8 @@ Nao avance para a Fase 3 sem confirmacao explicita do humano (obrigatorio).
    - Quantos arquivos fonte existem? Qual o LOC total e por arquivo?
    - Ha separacao de camadas (models/routes/controllers/services)? Elas sao reais
      ou cosmeticas? (Ex: pastas existem mas services nao sao importados?)
+   - Liste as **rotas GET publicas** (health, listagens de recursos, etc.) — elas
+     serao usadas na validacao da Fase 3, passadas como argumentos ao validate.sh.
 7. Conte os arquivos analisados.
 
 **Saida obrigatoria** — imprima exatamente este bloco (preencha os valores):
@@ -57,6 +60,7 @@ Domain:        <dominio, ex: E-commerce API (produtos, pedidos)>
 Architecture:  <descrita, ex: Monolitica — tudo em 4 arquivos>
 Source files:  <N> files analyzed
 DB tables:     <lista de tabelas/collections>
+Endpoints:     <rotas GET publicas, ex: /health, /produtos, /usuarios>
 ================================
 ```
 
@@ -132,15 +136,17 @@ encontrados, e validar que a aplicacao continua funcionando.
    - Entry point claro (`app.py` / `app.js` com factory `create_app()` quando possivel)
 4. Preserve **todos os endpoints originais** (mesmas rotas, mesmos verbos, mesmos
    contratos de resposta). A refatoracao nao e rewrite — a API publica nao muda.
-5. Rode a validacao automatica:
+5. Rode a validacao automatica, passando como argumentos as **rotas GET publicas**
+   mapeadas na Fase 1 (alem de `/health` e `/`, que o script ja testa por padrao):
 
    ```bash
-   bash ${CLAUDE_SKILL_DIR}/scripts/validate.sh
+   bash ${CLAUDE_SKILL_DIR}/scripts/validate.sh <endpoint1> <endpoint2> ...
+   # Ex.: validate.sh /produtos /usuarios /pedidos /relatorios/vendas
    ```
 
-   O script detecta o runtime, sobe a aplicacao em background, faz curl nos
-   endpoints mapeados na Fase 1, verifica os status HTTP e derruba a app. Se
-   falhar, corrija e rode novamente ate passar.
+   O script detecta o runtime, sobe a aplicacao em background, faz curl em cada
+   endpoint (os padrao + os passados como argumentos), verifica os status HTTP e
+   derruba a app. Se falhar, corrija e rode novamente ate passar.
 
 6. Imprima o resultado:
 

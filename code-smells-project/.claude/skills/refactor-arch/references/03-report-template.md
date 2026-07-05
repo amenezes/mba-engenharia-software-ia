@@ -73,7 +73,7 @@ Stack:   Python + Flask 3.1.1
 Files:   4 analyzed | ~780 lines of code
 
 Summary
-CRITICAL: 4 | HIGH: 2 | MEDIUM: 2 | LOW: 2
+CRITICAL: 5 | HIGH: 3 | MEDIUM: 2 | LOW: 2
 
 Findings
 
@@ -106,6 +106,13 @@ Description: app.run(debug=True, host='0.0.0.0') expoe o debugger interativo do
 Impact: Execucao remota de codigo (RCE) por qualquer cliente que alcance a porta 5000.
 Recommendation: debug via env (default False) + bind em localhost (Playbook #5).
 
+[CRITICAL] Sensitive Data Exposure
+File: models.py:83,99 (senha em to_dict); controllers.py:287-289 (/health)
+Description: get_todos_usuarios e get_usuario_por_id incluem a coluna 'senha' nos
+             dicts serializados, vazando para GET /usuarios e GET /usuarios/<id>.
+Impact: Qualquer cliente anonimo recebe as senhas (em texto plano) de todos os usuarios.
+Recommendation: Remover 'senha' do to_dict (Playbook #3).
+
 [HIGH] N+1 Queries
 File: models.py:171-233
 Description: Listagem de pedidos abre, para cada pedido, um cursor para itens e, para
@@ -120,6 +127,13 @@ Description: Endpoints /admin/reset-db e /admin/query nao possuem qualquer decor
 Impact: Qualquer cliente anonimo pode resetar o banco ou executar SQL arbitrario.
 Recommendation: Adicionar camada de auth + RBAC (Playbook #7).
 
+[HIGH] Business Logic in Controllers
+File: controllers.py:208-210,247-250 (notificacoes); models.py:256-262 (desconto)
+Description: Notificacoes (EMAIL/SMS/PUSH) sao print() inline no controller de
+             criar_pedido; a regra de desconto vive dentro do "model" relatorio_vendas.
+Impact: Regras de negocio acopladas ao transporte HTTP; impossivel testar isoladamente.
+Recommendation: Extrair para services (notificacao_service, relatorio_service) (Playbook #8).
+
 [MEDIUM] No Centralized Error Handling
 File: controllers.py:12,22,62,96
 Description: Controllers capturam Exception genericamente e retornam str(e) ao cliente,
@@ -128,7 +142,7 @@ Impact: Vazamento de stack trace, comportamento inconsistente entre endpoints.
 Recommendation: Registrar @app.errorhandler e logar estruturadamente (Playbook #10).
 
 [MEDIUM] Deprecated API Usage
-File: models.py (多处)
+File: models.py (múltiplos locais)
 Description: Uso de padrao de driver sqlite3 cru com check_same_thread=False em servidor
              multi-thread; ausencia de ORM/repository abstrato.
 Impact: Race conditions, queries espalhadas, dificuldade de evolucao do schema.
@@ -149,7 +163,7 @@ Impact: Legibilidade e manutenibilidade reduzidas.
 Recommendation: Renomear e usar nomes descritivos (Playbook #12).
 
 ================================
-Total: 10 findings
+Total: 12 findings
 ================================
 ```
 
