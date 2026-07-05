@@ -125,7 +125,7 @@ encontrados, e validar que a aplicação continua funcionando.
 
 **Passos**:
 
-1. Carregue as diretrizes em [references/04-mvc-Guidelines.md](references/04-mvc-Guidelines.md)
+1. Carregue as diretrizes em [references/04-mvc-guidelines.md](references/04-mvc-guidelines.md)
    (estrutura alvo de camadas) e o playbook em
    [references/05-refactor-playbook.md](references/05-refactor-playbook.md)
    (12 transformacoes concretas com antes/depois).
