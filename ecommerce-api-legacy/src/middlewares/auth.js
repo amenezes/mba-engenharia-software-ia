@@ -9,7 +9,7 @@ function verifyTokenMiddleware(req, res, next) {
     const token = extractToken(req);
     if (!token) return res.status(401).json({ erro: 'Token ausente' });
     const payload = verifyToken(token);
-    if (!payload) return res.status(401).json({ erro: 'Token invalido' });
+    if (!payload) return res.status(401).json({ erro: 'Token inválido' });
     req.user = payload;
     next();
 }

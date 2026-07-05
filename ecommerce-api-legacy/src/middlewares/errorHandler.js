@@ -20,7 +20,7 @@ function errorHandler(err, req, res, next) {
 }
 
 function notFound(req, res) {
-    res.status(404).json({ erro: 'Recurso nao encontrado' });
+    res.status(404).json({ erro: 'Recurso não encontrado' });
 }
 
 module.exports = { errorHandler, notFound, AppError };
