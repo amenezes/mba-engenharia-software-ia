@@ -120,7 +120,7 @@ echo ""
 # ---------------------------------------------------------------------------
 # Cheque 1: imports / sintaxe (boot sem rede)
 # ---------------------------------------------------------------------------
-echo "[1/3] Verificando sintaxe/imports..."
+echo "[1/4] Verificando sintaxe/imports..."
 if [ "$RUNTIME" = "python" ] && [ -n "$PYTHON_BIN" ]; then
     if "$PYTHON_BIN" -m py_compile "$ENTRY" 2>/dev/null; then
         log_pass "$PYTHON_BIN -m py_compile $ENTRY"
@@ -139,7 +139,7 @@ fi
 # Cheque 2: subir a aplicacao
 # ---------------------------------------------------------------------------
 echo ""
-echo "[2/3] Subindo a aplicacao..."
+echo "[2/4] Subindo a aplicacao..."
 PORT="${VALIDATE_PORT:-0}"
 # Tenta portas de 5050 a 5070 para evitar conflito
 if [ "$PORT" = "0" ]; then
@@ -195,7 +195,7 @@ fi
 # Cheque 3: endpoints respondem
 # ---------------------------------------------------------------------------
 echo ""
-echo "[3/3] Testando endpoints..."
+echo "[3/4] Testando endpoints..."
 if [ "$BOOT_OK" = "1" ]; then
     for ep in "${ALL_ENDPOINTS[@]}"; do
         # Faz apenas GET para smoke (nao destructive)
@@ -213,6 +213,60 @@ if [ "$BOOT_OK" = "1" ]; then
             fi
         fi
     done
+fi
+
+# ---------------------------------------------------------------------------
+# Cheque 4: validacao de input (POST body vazio) e auth (login invalido)
+# ---------------------------------------------------------------------------
+echo ""
+echo "[4/4] Testando validacao de input e autenticacao..."
+if [ "$BOOT_OK" = "1" ]; then
+    # (a) POST de criacao de usuario com body vazio -> espera 400
+    # Tenta /users e /usuarios (agnóstico de convenção de rota)
+    USER_CREATE_EP=""
+    for ep in "/users" "/usuarios" "/api/users"; do
+        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 \
+            -X POST "$BASE_URL$ep" \
+            -H "Content-Type: application/json" \
+            -d "{}" 2>/dev/null || echo "000")
+        if [ "$code" != "404" ] && [ "$code" != "000" ]; then
+            USER_CREATE_EP="$ep"
+            break
+        fi
+    done
+    if [ -n "$USER_CREATE_EP" ]; then
+        if [ "$code" = "400" ]; then
+            log_pass "POST $USER_CREATE_EP body vazio -> 400"
+        else
+            log_fail "POST $USER_CREATE_EP body vazio -> $code (esperado 400)"
+        fi
+    else
+        echo "  [skip] Nenhum endpoint POST /users|/usuarios encontrado"
+    fi
+
+    # (b) POST /login com credencial invalida -> espera 4xx (400 ou 401)
+    # Aceita qualquer 4xx: 401 (credencial rejeitada) ou 400 (campo invalido).
+    # O essencial é NÃO retornar 200 (bypass) nem 500 (crash).
+    LOGIN_EP=""
+    for ep in "/login" "/api/login"; do
+        code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 \
+            -X POST "$BASE_URL$ep" \
+            -H "Content-Type: application/json" \
+            -d '{"email":"no-such-user@example.com","password":"wrong-pwd-xxx"}' 2>/dev/null || echo "000")
+        if [ "$code" != "404" ] && [ "$code" != "000" ]; then
+            LOGIN_EP="$ep"
+            break
+        fi
+    done
+    if [ -n "$LOGIN_EP" ]; then
+        if [ "$code" -ge 400 ] && [ "$code" -lt 500 ]; then
+            log_pass "POST $LOGIN_EP credencial invalida -> $code"
+        else
+            log_fail "POST $LOGIN_EP credencial invalida -> $code (esperado 4xx)"
+        fi
+    else
+        echo "  [skip] Nenhum endpoint POST /login encontrado"
+    fi
 fi
 
 # ---------------------------------------------------------------------------

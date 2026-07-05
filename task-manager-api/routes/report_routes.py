@@ -5,9 +5,11 @@ from models.user import User
 from models.category import Category
 from datetime import datetime, timedelta
 from utils.helpers import format_date, calculate_percentage
+from middlewares.auth import login_required
 import json
 
 report_bp = Blueprint('reports', __name__)
+
 
 @report_bp.route('/reports/summary', methods=['GET'])
 def summary_report():
@@ -50,22 +52,27 @@ def summary_report():
         Task.updated_at >= seven_days_ago
     ).count()
 
-    users = User.query.all()
-    user_stats = []
-    for u in users:
-        user_tasks = Task.query.filter_by(user_id=u.id).all()
-        total = len(user_tasks)
-        completed = 0
-        for t in user_tasks:
-            if t.status == 'done':
-                completed = completed + 1
-        user_stats.append({
+    user_stats = (
+        db.session.query(
+            User.id,
+            User.name,
+            db.func.count(Task.id).label('total'),
+            db.func.sum(db.case((Task.status == 'done', 1), else_=0)).label('completed'),
+        )
+        .outerjoin(Task, Task.user_id == User.id)
+        .group_by(User.id, User.name)
+        .all()
+    )
+    user_productivity = [
+        {
             'user_id': u.id,
             'user_name': u.name,
-            'total_tasks': total,
-            'completed_tasks': completed,
-            'completion_rate': round((completed / total) * 100, 2) if total > 0 else 0
-        })
+            'total_tasks': u.total,
+            'completed_tasks': int(u.completed or 0),
+            'completion_rate': round((int(u.completed or 0) / u.total) * 100, 2) if u.total > 0 else 0,
+        }
+        for u in user_stats
+    ]
 
     report = {
         'generated_at': str(datetime.utcnow()),
@@ -95,7 +102,7 @@ def summary_report():
             'tasks_created_last_7_days': recent_tasks,
             'tasks_completed_last_7_days': recent_done,
         },
-        'user_productivity': user_stats,
+        'user_productivity': user_productivity,
     }
 
     return jsonify(report), 200
@@ -156,15 +163,24 @@ def user_report(user_id):
 
 @report_bp.route('/categories', methods=['GET'])
 def get_categories():
-    categories = Category.query.all()
+    cat_stats = (
+        db.session.query(
+            Category,
+            db.func.count(Task.id).label('task_count'),
+        )
+        .outerjoin(Task, Task.category_id == Category.id)
+        .group_by(Category.id)
+        .all()
+    )
     result = []
-    for c in categories:
+    for c, task_count in cat_stats:
         cat_data = c.to_dict()
-        cat_data['task_count'] = Task.query.filter_by(category_id=c.id).count()
+        cat_data['task_count'] = task_count
         result.append(cat_data)
     return jsonify(result), 200
 
 @report_bp.route('/categories', methods=['POST'])
+@login_required
 def create_category():
     data = request.get_json()
     if not data:
@@ -183,11 +199,12 @@ def create_category():
         db.session.add(category)
         db.session.commit()
         return jsonify(category.to_dict()), 201
-    except:
+    except Exception:
         db.session.rollback()
         return jsonify({'error': 'Erro ao criar categoria'}), 500
 
 @report_bp.route('/categories/<int:cat_id>', methods=['PUT'])
+@login_required
 def update_category(cat_id):
     cat = db.session.get(Category, cat_id)
     if not cat:
@@ -204,11 +221,12 @@ def update_category(cat_id):
     try:
         db.session.commit()
         return jsonify(cat.to_dict()), 200
-    except:
+    except Exception:
         db.session.rollback()
         return jsonify({'error': 'Erro ao atualizar'}), 500
 
 @report_bp.route('/categories/<int:cat_id>', methods=['DELETE'])
+@login_required
 def delete_category(cat_id):
     cat = db.session.get(Category, cat_id)
     if not cat:
@@ -218,6 +236,6 @@ def delete_category(cat_id):
         db.session.delete(cat)
         db.session.commit()
         return jsonify({'message': 'Categoria deletada'}), 200
-    except:
+    except Exception:
         db.session.rollback()
         return jsonify({'error': 'Erro ao deletar'}), 500

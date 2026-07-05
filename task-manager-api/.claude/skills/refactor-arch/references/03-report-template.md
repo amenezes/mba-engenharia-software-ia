@@ -128,7 +128,7 @@ Impact: Vazamento de stack trace, comportamento inconsistente entre endpoints.
 Recommendation: Registrar @app.errorhandler e logar estruturadamente (Playbook #10).
 
 [MEDIUM] Deprecated API Usage
-File: models.py (多处)
+File: models.py (múltiplos locais)
 Description: Uso de padrao de driver sqlite3 cru com check_same_thread=False em servidor
              multi-thread; ausencia de ORM/repository abstrato.
 Impact: Race conditions, queries espalhadas, dificuldade de evolucao do schema.

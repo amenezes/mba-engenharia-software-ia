@@ -214,7 +214,7 @@ sem observabilidade, facilita ataque por revelacao de informacao.
 
 ---
 
-## 12. Magic Numbers/Strings + DRY [LOW/MEDIUM]
+## 12. Magic Numbers/Strings + DRY [LOW]
 
 **Sinais de deteccao**:
 
