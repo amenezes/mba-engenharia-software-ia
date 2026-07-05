@@ -102,9 +102,8 @@ relatorio estruturado com severidade e `arquivo:linha` exatos.
 [references/03-report-template.md](references/03-report-template.md), incluindo
 o cabecalho, o sumario com contagem e a lista de findings ordenada.
 
-Salve uma copia do relatorio em `reports/audit-project-<N>.md` (crie o diretorio
-`reports/` na raiz do projeto se nao existir). O numero do projeto: pergunte ao
-humano ou infira pela ordem (1 = primeiro projeto analisado).
+Salve uma copia do relatorio em `../reports/audit-project-<N>.md`. O numero do
+projeto: pergunte ao humano ou infira pela ordem (1 = primeiro projeto analisado).
 
 **PAUSA OBRIGATORIA** — apos imprimir o relatorio, voce DEVE parar e perguntar:
 
