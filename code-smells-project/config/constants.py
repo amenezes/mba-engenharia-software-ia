@@ -8,7 +8,7 @@ TAXA_DESCONTO_BAIXO = 0.02
 NOME_PRODUTO_MIN = 2
 NOME_PRODUTO_MAX = 200
 
-CATEGORAS_VALIDAS = (
+CATEGORIAS_VALIDAS = (
     "informatica",
     "moveis",
     "vestuario",

@@ -1,7 +1,7 @@
 from flask import jsonify, request
 
 from config.constants import (
-    CATEGORAS_VALIDAS,
+    CATEGORIAS_VALIDAS,
     NOME_PRODUTO_MAX,
     NOME_PRODUTO_MIN,
 )
@@ -11,23 +11,23 @@ from services.pedido_service import PedidoError
 
 def _validar_produto(dados):
     if not dados:
-        return None, ("Dados invalidos", 400)
+        return None, ("Dados inválidos", 400)
     for campo in ("nome", "preco", "estoque"):
         if campo not in dados:
-            return None, (f"{campo.capitalize()} e obrigatorio", 400)
+            return None, (f"{campo.capitalize()} é obrigatório", 400)
     nome = dados["nome"]
     preco = dados["preco"]
     estoque = dados["estoque"]
     categoria = dados.get("categoria", "geral")
     descricao = dados.get("descricao", "")
     if preco < 0:
-        return None, ("Preco nao pode ser negativo", 400)
+        return None, ("Preço não pode ser negativo", 400)
     if estoque < 0:
-        return None, ("Estoque nao pode ser negativo", 400)
+        return None, ("Estoque não pode ser negativo", 400)
     if len(nome) < NOME_PRODUTO_MIN or len(nome) > NOME_PRODUTO_MAX:
-        return None, ("Nome com tamanho invalido", 400)
+        return None, ("Nome com tamanho inválido", 400)
     if categoria not in CATEGORAS_VALIDAS:
-        return None, ("Categoria invalida", 400)
+        return None, ("Categoria inválida", 400)
     return (nome, descricao, preco, estoque, categoria), None
 
 
@@ -39,7 +39,7 @@ def listar():
 def buscar_por_id(produto_id):
     produto = produto_model.get_por_id(produto_id)
     if not produto:
-        return jsonify({"erro": "Produto nao encontrado", "sucesso": False}), 404
+        return jsonify({"erro": "Produto não encontrado", "sucesso": False}), 404
     return jsonify({"dados": produto, "sucesso": True}), 200
 
 
@@ -57,7 +57,7 @@ def criar():
 
 def atualizar(produto_id):
     if not produto_model.get_por_id(produto_id):
-        return jsonify({"erro": "Produto nao encontrado"}), 404
+        return jsonify({"erro": "Produto não encontrado"}), 404
     dados = request.get_json()
     validos, erro = _validar_produto(dados)
     if erro:
@@ -68,7 +68,7 @@ def atualizar(produto_id):
 
 def deletar(produto_id):
     if not produto_model.get_por_id(produto_id):
-        return jsonify({"erro": "Produto nao encontrado"}), 404
+        return jsonify({"erro": "Produto não encontrado"}), 404
     produto_model.deletar(produto_id)
     return jsonify({"sucesso": True, "mensagem": "Produto deletado"}), 200
 

@@ -24,7 +24,7 @@ def login_required(f):
         try:
             payload = _decodificar(token)
         except jwt.PyJWTError:
-            return jsonify({"erro": "Token invalido"}), 401
+            return jsonify({"erro": "Token inválido"}), 401
         request.current_user = payload
         return f(*args, **kwargs)
 
@@ -40,7 +40,7 @@ def admin_required(f):
         try:
             payload = _decodificar(token)
         except jwt.PyJWTError:
-            return jsonify({"erro": "Token invalido"}), 401
+            return jsonify({"erro": "Token inválido"}), 401
         if payload.get("tipo") != "admin":
             return jsonify({"erro": "Acesso restrito a administradores"}), 403
         request.current_user = payload

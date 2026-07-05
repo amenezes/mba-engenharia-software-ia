@@ -11,6 +11,6 @@ def notificar_novo_pedido(pedido_id, usuario_id):
 
 def notificar_status_pedido(pedido_id, novo_status):
     if novo_status == "aprovado":
-        logger.info("pedido %s aprovado — preparar envio", pedido_id)
+        logger.info("Pedido %s aprovado — preparar envio", pedido_id)
     elif novo_status == "cancelado":
-        logger.info("pedido %s cancelado — devolver estoque", pedido_id)
+        logger.info("Pedido %s cancelado — devolver estoque", pedido_id)

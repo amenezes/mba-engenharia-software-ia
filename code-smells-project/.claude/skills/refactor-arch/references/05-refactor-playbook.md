@@ -1,22 +1,22 @@
-# 05 — Playbook de Refatoracao
+# 05 — Playbook de refatoração
 
 **12 transformacoes concretas** com exemplo antes/depois em **Python e Node.js**.
-Cada transformacao referencia o anti-pattern correspondente no
+Cada transformação referência o anti-pattern correspondente no
 [catálogo](02-antipatterns-catalog.md).
 
-**Principio de agnosticidade**: Cada transformacao descreve primeiro o **padrao
+**Princípio de Agnosticidade**: Cada transformação descreve primeiro o **padrão
 abstrato** (o que fazer e por que) e depois exemplos concretos em Python e Node.js
-(como fazer em cada ecossistema). Para outras stacks, aplique o padrao usando a
-biblioteca padrao ou idioma canonico do ecossistema detectado na Fase 1.
+(como fazer em cada ecossistema). Para outras stacks, aplique o padrão usando a
+biblioteca padrão ou idioma canonico do ecossistema detectado na Fase 1.
 Ex: "substituir hash quebrado por algoritmo de derivacao de chave com salt"
 aplica-se a qualquer linguagem; a escolha da biblioteca (werkzeug, bcrypt, argon2,
 crypto.scrypt) depende do ecossistema.
 
-Principios:
+Princípios:
 - Aplique as transformacoes na ordem de severidade dos findings (CRITICAL primeiro).
 - Preserve os contratos HTTP (rotas, verbos, formatos de resposta).
-- Quando um anti-pattern aparecer varias vezes, aplique a transformacao em todos os
-  locais (nao so no primeiro).
+- Quando um anti-pattern aparecer varias vezes, aplique a transformação em todos os
+  locais (não só no primeiro).
 
 ---
 
@@ -114,7 +114,7 @@ def check_password(self, pwd):
     return check_password_hash(self.password, pwd)
 ```
 
-(Adicionar `werkzeug` ja vem com Flask; `bcrypt` opcional via `methods=['bcrypt']`.)
+(Adicionar `werkzeug` já vem com Flask; `bcrypt` opcional via `methods=['bcrypt']`.)
 
 **Node — antes** (`utils.js`):
 ```js
@@ -146,7 +146,7 @@ module.exports = { hashPassword, verifyPassword };
 
 ---
 
-## 3. Remover campos sensíveis da serializacao
+## 3. Remover campos sensíveis da serialização
 
 **Anti-pattern**: #3 Sensitive Data Exposure
 
@@ -233,9 +233,9 @@ db.run(`INSERT INTO users (name) VALUES ('${req.body.name}')`);
 db.run("INSERT INTO users (name) VALUES (?)", [req.body.name], function(err) { ... });
 ```
 
-> Atencao: queries com `?`/`[params]` ja estavam corretas no `ecommerce-api-legacy`
-> — nesse projeto, a transformacao e principalmente mover o SQL para um
-> repository/model (ver #6) e nao a parametrizacao em si.
+> atenção: queries com `?`/`[params]` já estavam corretas no `ecommerce-api-legacy`
+> — nesse projeto, a transformação e principalmente mover o SQL para um
+> repository/model (ver #6) e não a parametrizacao em si.
 
 ---
 
@@ -287,7 +287,7 @@ function createApp() {
     const app = express();
     app.use(express.json({ limit: '1mb' }));
     app.use(require('./routes'));
-    app.use(errorHandler);   // centralizado, por ultimo
+    app.use(errorHandler);   // centralizado, por último
     return app;
 }
 
@@ -308,12 +308,12 @@ Transforma um arquivo/classe que concentra DB + rotas + regras em camadas MVC.
 
 **Python — antes** (`models.py` 314 LOC com produtos+usuarios+pedidos+itens juntos):
 
-**Depois**: separar por dominio em arquivos pequenos:
+**Depois**: separar por domínio em arquivos pequenos:
 ```
 models/produto_model.py     (produto: queries + to_dict)
 models/usuario_model.py     (usuario: queries + hash + to_dict)
 models/pedido_model.py      (pedido + itens: queries + to_dict)
-controllers/pedido_controller.py  (orchestr + validacao)
+controllers/pedido_controller.py  (orchestr + validação)
 services/pedido_service.py        (regras: checkout, desconto)
 routes/pedido_routes.py           (Blueprint thin)
 ```
@@ -328,7 +328,7 @@ src/models/enrollmentModel.js    (acesso a enrollments + payments)
 src/controllers/checkoutController.js
 src/controllers/adminController.js
 src/services/paymentService.js   (regras de pagamento)
-src/services/reportService.js    (agregacoes do relatorio)
+src/services/reportService.js    (agregacoes do relatório)
 src/routes/index.js              (monta todos os routers)
 src/db.js                        (conexao + schema bootstrap isolados)
 ```
@@ -357,7 +357,7 @@ def login_required(f):
             payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
             request.current_user_id = payload['sub']
         except jwt.PyJWTError:
-            return jsonify({'error': 'Token invalido'}), 401
+            return jsonify({'error': 'Token inválido'}), 401
         return f(*args, **kwargs)
     return decorated
 
@@ -404,7 +404,7 @@ function verifyToken(req, res, next) {
         req.user = jwt.verify(auth.slice(7), process.env.JWT_SECRET);
         next();
     } catch (e) {
-        return res.status(401).json({ error: 'Token invalido' });
+        return res.status(401).json({ error: 'Token inválido' });
     }
 }
 
@@ -432,7 +432,7 @@ adminRouter.get('/financial-report', verifyToken, requireAdmin, adminController.
 **Python — antes** (`controllers.py`):
 ```python
 def criar_pedido(dados):
-    # validacao + regra de desconto + notificacao tudo aqui dentro
+    # validação + regra de desconto + notificação tudo aqui dentro
     total = sum(...)
     if total > 10000:
         total *= 0.9
@@ -546,20 +546,20 @@ logger = logging.getLogger(__name__)
 def register_error_handlers(app):
     @app.errorhandler(404)
     def not_found(e):
-        return jsonify({'error': 'Recurso nao encontrado'}), 404
+        return jsonify({'error': 'Recurso não encontrado'}), 404
 
     @app.errorhandler(400)
     def bad_request(e):
-        return jsonify({'error': 'Requisicao invalida'}), 400
+        return jsonify({'error': 'Requisicao inválida'}), 400
 
     @app.errorhandler(Exception)
     def handle_unexpected(e):
-        logger.exception("Erro nao tratado")
+        logger.exception("Erro não tratado")
         return jsonify({'error': 'Erro interno'}), 500
 ```
 
-Remover os `return str(e)` e `except: pass` espalhados — deixar excecoes
-propagarem ate o handler central.
+Remover os `return str(e)` e `except: pass` espalhados — deixar exceções
+propagarem até o handler central.
 
 **Node — depois** (`src/middlewares/errorHandler.js`):
 ```js
@@ -654,7 +654,7 @@ LIMITE_DESCONTO_MEDIO = 5000
 TAXA_DESCONTO_MEDIO = 0.05
 ```
 
-**Eliminar duplicação** — funções quase idênticas viram uma com parametro:
+**Eliminar duplicação** — funções quase idênticas viram uma com parâmetro:
 ```python
 # antes: get_pedidos_usuario(id) e get_todos_pedidos() com 90% do corpo igual
 # depois:

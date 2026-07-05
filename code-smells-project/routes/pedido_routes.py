@@ -32,8 +32,8 @@ pedido_bp.add_url_rule(
     "/health", "health_check", pedido_controller.health_check, methods=["GET"]
 )
 pedido_bp.add_url_rule("/", "index", lambda: jsonify({
-    "mensagem": "Bem-vindo a API da Loja",
-    "versao": "2.0.0",
+    "mensagem": "Bem-vindo à API da Loja",
+    "versão": "2.0.0",
     "arquitetura": "MVC",
     "endpoints": {
         "produtos": "/produtos",

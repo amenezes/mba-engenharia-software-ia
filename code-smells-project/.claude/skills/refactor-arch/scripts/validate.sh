@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #
-# validate.sh — Smoke test pos-refatoracao (Fase 3 da skill refactor-arch).
+# validate.sh — Smoke test pos-refatoração (Fase 3 da skill refactor-arch).
 #
-# Detecta o runtime (Python/Node), sobe a aplicacao em background, faz curl nos
+# Detecta o runtime (Python/Node), sobe a aplicação em background, faz curl nos
 # endpoints mapeados, verifica os status HTTP e derruba a app.
 #
-# Saida: linhas "[pass]"/"[fail]" para cada cheque e exit code 0 (tudo ok) ou 1.
+# saída: linhas "[pass]"/"[fail]" para cada cheque e exit code 0 (tudo ok) ou 1.
 #
 # Uso: bash ${CLAUDE_SKILL_DIR}/scripts/validate.sh
 #      bash validate.sh [ENDPOINT_EXTRA1] [ENDPOINT_EXTRA2] ...
@@ -28,7 +28,7 @@ trap cleanup EXIT INT TERM
 log_pass() { echo "  [pass] $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
 log_fail() { echo "  [fail] $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
 
-# Endpoints padrao a testar (alimento de GET; sem auth esperado para smoke).
+# Endpoints padrão a testar (alimento de GET; sem auth esperado para smoke).
 # Endpoints extras podem ser passados como argumentos.
 DEFAULT_ENDPOINTS=( "/health" "/" )
 EXTRA_ENDPOINTS=( "$@" )
@@ -80,7 +80,7 @@ echo "Runtime:    $RUNTIME"
 echo "Entry:      $ENTRY"
 
 # ---------------------------------------------------------------------------
-# Detectar o executavel do runtime (python3/python, node; venvs locais)
+# Detectar o executável do runtime (python3/python, node; venvs locais)
 # ---------------------------------------------------------------------------
 PYTHON_BIN=""
 NODE_BIN=""
@@ -116,13 +116,13 @@ detect_node() {
 if [ "$RUNTIME" = "python" ]; then
     detect_python
     if [ -z "$PYTHON_BIN" ]; then
-        log_fail "Executavel python nao encontrado (tentou python3, python, venvs locais)"
+        log_fail "Executável python não encontrado (tentou python3, python, venvs locais)"
         echo "  Dica: ative o venv ou exporte PYTHON=/caminho/python"
     fi
 elif [ "$RUNTIME" = "node" ]; then
     detect_node
     if [ -z "$NODE_BIN" ]; then
-        log_fail "Executavel node nao encontrado"
+        log_fail "Executável node não encontrado"
     fi
 fi
 echo ""
@@ -147,13 +147,13 @@ elif [ "$RUNTIME" = "go" ]; then
     if command -v go >/dev/null 2>&1 && go vet ./... 2>/dev/null; then
         log_pass "go vet ./..."
     else
-        log_fail "go vet ./... (go nao encontrado ou erros de compilacao)"
+        log_fail "go vet ./... (go não encontrado ou erros de compilacao)"
     fi
 elif [ "$RUNTIME" = "rust" ]; then
     if command -v cargo >/dev/null 2>&1 && cargo check 2>/dev/null; then
         log_pass "cargo check"
     else
-        log_fail "cargo check (cargo nao encontrado ou erros de compilacao)"
+        log_fail "cargo check (cargo não encontrado ou erros de compilacao)"
     fi
 elif [ "$RUNTIME" = "java" ]; then
     if command -v mvn >/dev/null 2>&1 && mvn compile -q 2>/dev/null; then
@@ -161,21 +161,21 @@ elif [ "$RUNTIME" = "java" ]; then
     elif command -v gradle >/dev/null 2>&1 && gradle compileJava -q 2>/dev/null; then
         log_pass "gradle compileJava"
     else
-        log_fail "compilacao Java (mvn/gradle nao encontrado ou erros)"
+        log_fail "compilacao Java (mvn/gradle não encontrado ou erros)"
     fi
 elif [ "$RUNTIME" = "php" ]; then
     if command -v php >/dev/null 2>&1 && php -l "$ENTRY" 2>/dev/null; then
         log_pass "php -l (lint)"
     else
-        echo "  [skip] php nao encontrado"
+        echo "  [skip] php não encontrado"
     fi
 fi
 
 # ---------------------------------------------------------------------------
-# Cheque 2: subir a aplicacao
+# Cheque 2: subir a aplicação
 # ---------------------------------------------------------------------------
 echo ""
-echo "[2/4] Subindo a aplicacao..."
+echo "[2/4] Subindo a aplicação..."
 PORT="${VALIDATE_PORT:-0}"
 # Tenta portas de 5050 a 5070 para evitar conflito
 if [ "$PORT" = "0" ]; then
@@ -204,7 +204,7 @@ elif [ "$RUNTIME" = "node" ] && [ -n "$NODE_BIN" ]; then
     APP_PID=$!
 fi
 
-# Espera o boot (ate 15s)
+# Espera o boot (até 15s)
 BOOT_OK=0
 for i in $(seq 1 30); do
     if ! kill -0 "$APP_PID" 2>/dev/null; then
@@ -234,16 +234,16 @@ echo ""
 echo "[3/4] Testando endpoints..."
 if [ "$BOOT_OK" = "1" ]; then
     for ep in "${ALL_ENDPOINTS[@]}"; do
-        # Faz apenas GET para smoke (nao destructive)
+        # Faz apenas GET para smoke (não destructive)
         HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "$BASE_URL$ep" 2>/dev/null || echo "000")
         if [ "$HTTP_CODE" = "000" ]; then
             log_fail "GET $ep -> sem resposta"
         elif [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
             log_pass "GET $ep -> $HTTP_CODE"
         else
-            # 4xx/5xx ainda indica que o servidor respondeu; 404 = rota nao existe
+            # 4xx/5xx ainda indica que o servidor respondeu; 404 = rota não existe
             if [ "$HTTP_CODE" = "404" ]; then
-                echo "  [skip] GET $ep -> 404 (rota nao existe, pulando)"
+                echo "  [skip] GET $ep -> 404 (rota não existe, pulando)"
             else
                 log_fail "GET $ep -> $HTTP_CODE"
             fi
@@ -252,12 +252,12 @@ if [ "$BOOT_OK" = "1" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Cheque 4: validacao de input (POST body vazio) e auth (login invalido)
+# Cheque 4: validação de input (POST body vazio) e auth (login inválido)
 # ---------------------------------------------------------------------------
 echo ""
-echo "[4/4] Testando validacao de input e autenticacao..."
+echo "[4/4] Testando validação de input e autenticação..."
 if [ "$BOOT_OK" = "1" ]; then
-    # (a) POST de criacao de usuario com body vazio -> espera 400
+    # (a) POST de criação de usuario com body vazio -> espera 400
     # Tenta /users e /usuarios (agnóstico de convenção de rota)
     USER_CREATE_EP=""
     for ep in "/users" "/usuarios" "/api/users"; do
@@ -280,8 +280,8 @@ if [ "$BOOT_OK" = "1" ]; then
         echo "  [skip] Nenhum endpoint POST /users|/usuarios encontrado"
     fi
 
-    # (b) POST /login com credencial invalida -> espera 4xx (400 ou 401)
-    # Aceita qualquer 4xx: 401 (credencial rejeitada) ou 400 (campo invalido).
+    # (b) POST /login com credencial inválida -> espera 4xx (400 ou 401)
+    # Aceita qualquer 4xx: 401 (credencial rejeitada) ou 400 (campo inválido).
     # O essencial é NÃO retornar 200 (bypass) nem 500 (crash).
     LOGIN_EP=""
     for ep in "/login" "/api/login"; do
@@ -296,9 +296,9 @@ if [ "$BOOT_OK" = "1" ]; then
     done
     if [ -n "$LOGIN_EP" ]; then
         if [ "$code" -ge 400 ] && [ "$code" -lt 500 ]; then
-            log_pass "POST $LOGIN_EP credencial invalida -> $code"
+            log_pass "POST $LOGIN_EP credencial inválida -> $code"
         else
-            log_fail "POST $LOGIN_EP credencial invalida -> $code (esperado 4xx)"
+            log_fail "POST $LOGIN_EP credencial inválida -> $code (esperado 4xx)"
         fi
     else
         echo "  [skip] Nenhum endpoint POST /login encontrado"

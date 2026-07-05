@@ -1,7 +1,7 @@
-# 01 — Heuristicas de Analise de Projeto
+# 01 — heurísticas de Análise de Projeto
 
-Esta referencia orienta a **Fase 1** da skill: detectar stack, dominio e
-arquitetura atual de um projeto qualquer, de forma agnostica de tecnologia.
+Esta referência orienta a **Fase 1** da skill: detectar stack, domínio e
+arquitetura atual de um projeto qualquer, de forma agnóstica de tecnologia.
 
 ## 1. Detectar a linguagem
 
@@ -9,7 +9,7 @@ Procure pelos manifestos na raiz do projeto:
 
 | Manifesto              | Linguagem        | Como ler                          |
 | ---------------------- | ---------------- | --------------------------------- |
-| `requirements.txt`     | Python           | linhas `<pkg>==<versao>`          |
+| `requirements.txt`     | Python           | linhas `<pkg>==<versão>`          |
 | `pyproject.toml`       | Python           | `[project.dependencies]`          |
 | `setup.py`             | Python (legado)  | `install_requires=[...]`          |
 | `package.json`         | Node.js / JS     | `"dependencies": { ... }`         |
@@ -18,7 +18,7 @@ Procure pelos manifestos na raiz do projeto:
 | `Cargo.toml`           | Rust             | `[dependencies]`                  |
 | `composer.json`        | PHP              | `"require": { ... }`              |
 
-Confirme pela extensao predominante dos arquivos fonte: `.py`, `.js`/`.ts`,
+Confirme pela extensão predominante dos arquivos fonte: `.py`, `.js`/`.ts`,
 `.go`, `.java`, `.rs`, `.php`.
 
 Grep uteis para confirmar Python:
@@ -31,13 +31,13 @@ Grep uteis para confirmar Node.js:
 rg -l "require\(|module\.exports|const |import .* from" --type js
 ```
 
-## 2. Detectar o framework e versao exata
+## 2. Detectar o framework e versão exata
 
-Leia o manifesto de dependencias e procure por frameworks web conhecidos:
+Leia o manifesto de dependências e procure por frameworks web conhecidos:
 
 **Python** (`requirements.txt` / `pyproject.toml`):
 
-| Framework        | String de deteccao          |
+| Framework        | String de detecção          |
 | ---------------- | --------------------------- |
 | Flask            | `flask==<X>` ou `Flask==`   |
 | FastAPI          | `fastapi==`                 |
@@ -45,12 +45,12 @@ Leia o manifesto de dependencias e procure por frameworks web conhecidos:
 | Bottle           | `bottle==`                  |
 | Tornado          | `tornado==`                 |
 
-Extraia a versao exata do `==<versao>`. Se houver `flask-cors`, `flask-sqlalchemy`,
+Extraia a versão exata do `==<versão>`. Se houver `flask-cors`, `flask-sqlalchemy`,
 `flask-login`, liste-os tambem.
 
 **Node.js** (`package.json` → `dependencies`):
 
-| Framework / lib  | String de deteccao          |
+| Framework / lib  | String de detecção          |
 | ---------------- | --------------------------- |
 | Express          | `"express": "^<X>"`         |
 | Fastify          | `"fastify":`                |
@@ -62,7 +62,7 @@ Para o Express, detecte tambem middlewares relevantes: `cors`, `helmet`,
 
 **Go** (`go.mod`):
 
-| Framework / lib  | String de deteccao             |
+| Framework / lib  | String de detecção             |
 | ---------------- | ------------------------------ |
 | Gin              | `github.com/gin-gonic/gin`     |
 | Echo             | `github.com/labstack/echo`     |
@@ -71,7 +71,7 @@ Para o Express, detecte tambem middlewares relevantes: `cors`, `helmet`,
 
 **Java** (`pom.xml` / `build.gradle`):
 
-| Framework / lib  | String de deteccao                    |
+| Framework / lib  | String de detecção                    |
 | ---------------- | ------------------------------------- |
 | Spring Boot      | `spring-boot-starter-web`             |
 | Quarkus          | `quarkus-resteasy`                    |
@@ -79,7 +79,7 @@ Para o Express, detecte tambem middlewares relevantes: `cors`, `helmet`,
 
 **Rust** (`Cargo.toml`):
 
-| Framework / lib  | String de deteccao       |
+| Framework / lib  | String de detecção       |
 | ---------------- | ------------------------ |
 | Actix Web        | `actix-web`              |
 | Axum             | `axum`                   |
@@ -87,7 +87,7 @@ Para o Express, detecte tambem middlewares relevantes: `cors`, `helmet`,
 
 **PHP** (`composer.json`):
 
-| Framework / lib  | String de deteccao          |
+| Framework / lib  | String de detecção          |
 | ---------------- | --------------------------- |
 | Laravel          | `laravel/framework`         |
 | Symfony          | `symfony/http-kernel`       |
@@ -95,7 +95,7 @@ Para o Express, detecte tambem middlewares relevantes: `cors`, `helmet`,
 
 ## 3. Detectar o banco de dados
 
-Procure por sinais no codigo fonte (Grep):
+Procure por sinais no código fonte (Grep):
 
 | Tecnologia         | Sinais (regex)                                              |
 | ------------------ | ----------------------------------------------------------- |
@@ -111,22 +111,22 @@ Identifique as **tabelas / collections** procurando por:
 
 Liste as tabelas encontradas.
 
-## 4. Identificar o dominio
+## 4. Identificar o domínio
 
-O dominio e inferido pelos nomes de entidades/tabelas/rotas:
+O domínio e inferido pelos nomes de entidades/tabelas/rotas:
 
 - Liste as rotas HTTP registradas (Grep por `@app.route`, `@.*\.route`,
   `app\.(get|post|put|delete|patch)`, `add_url_rule`, `router\.(get|post)`).
-- Liste os models/classes de dominio (`class .*\(db\.Model\)`, `class .*Model`,
+- Liste os models/classes de domínio (`class .*\(db\.Model\)`, `class .*Model`,
   `mongoose.model(`).
-- Agrupe por recurso e descreva o dominio em uma frase. Exemplos:
+- Agrupe por recurso e descreva o domínio em uma frase. Exemplos:
   - tabelas `produtos, usuarios, pedidos` → "E-commerce API (produtos, pedidos, usuarios)"
   - rotas `/api/courses`, `/api/checkout`, tabelas `enrollments, payments` → "LMS API com checkout"
   - tabelas `tasks, users, categories` → "Task Manager API"
 
 ## 5. Mapear a arquitetura atual
 
-Avalie o **grau de separacao de responsabilidades**:
+Avalie o **grau de separação de responsabilidades**:
 
 1. **Conte os arquivos fonte** (excluindo `node_modules`, `.venv`, `__pycache__`,
    `tests`, migracoes):
@@ -135,24 +135,24 @@ Avalie o **grau de separacao de responsabilidades**:
    rg --files -g "*.js" -g "!node_modules" | wc -l   # Node
    ```
 2. **Conte LOC por arquivo** (`wc -l` ou `rg --count-matches ''`).
-3. **Verifique a estrutura de diretorios**:
+3. **Verifique a estrutura de diretórios**:
    - Ha pastas `models/`, `routes/` ou `views/`, `controllers/`, `services/`?
-   - Elas estao **populadas** ou vazias?
-4. **Teste se a separacao e real ou cosmetica**:
-   - Os `services/` sao realmente importados? Grep por `from .*services` ou
+   - Elas estão **populadas** ou vazias?
+4. **Teste se a separação e real ou cosmetica**:
+   - Os `services/` são realmente importados? Grep por `from .*services` ou
      `require.*services`. Se ninguem importa, e MVC cosmetico.
-   - Os models tem logica de negocio? (metodos com regras de desconto, pagamento,
-     notificacao dentro de models.py/model.js).
+   - Os models tem lógica de negocio? (métodos com regras de desconto, pagamento,
+     notificação dentro de models.py/model.js).
    - As rotas acessam o DB diretamente? Grep por `cursor.execute`, `db.run`,
      `Model.query` dentro de arquivos de rota.
 5. **Classifique a arquitetura**:
    - **Monolito flat**: poucos arquivos, tudo junto, sem pastas.
    - **God Object**: uma classe/arquivo concentra DB + rotas + regras.
-   - **MVC cosmetico**: pastas existem mas services mortos, logica nas rotas.
+   - **MVC cosmetico**: pastas existem mas services mortos, lógica nas rotas.
    - **MVC parcial**: algumas camadas ok, outras violadas.
-   - **MVC real**: separacao efetiva (raro nos projetos-alvo).
+   - **MVC real**: separação efetiva (raro nos projetos-alvo).
 
-## 6. Exemplo de saida
+## 6. Exemplo de saída
 
 Para `code-smells-project`:
 
@@ -164,7 +164,7 @@ Language:      Python
 Framework:     Flask 3.1.1
 Dependencies:  flask-cors 5.0.1
 Domain:        E-commerce API (produtos, pedidos, usuarios)
-Architecture:  Monolitica — tudo em 4 arquivos, sem separacao de camadas
+Architecture:  Monolitica — tudo em 4 arquivos, sem separação de camadas
 Source files:  4 files analyzed
 DB tables:     produtos, usuarios, pedidos, itens_pedido
 ================================

@@ -23,7 +23,7 @@ def processar_checkout(usuario_id, itens):
     for item in itens:
         produto = produtos.get(item["produto_id"])
         if produto is None:
-            raise PedidoError(f"Produto {item['produto_id']} nao encontrado")
+            raise PedidoError(f"Produto {item['produto_id']} não encontrado")
         quantidade = item["quantidade"]
         if produto["estoque"] < quantidade:
             raise PedidoError(f"Estoque insuficiente para {produto['nome']}")

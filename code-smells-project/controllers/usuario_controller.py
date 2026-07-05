@@ -23,19 +23,19 @@ def listar():
 def buscar_por_id(usuario_id):
     usuario = usuario_model.get_por_id(usuario_id)
     if not usuario:
-        return jsonify({"erro": "Usuario nao encontrado"}), 404
+        return jsonify({"erro": "Usuário não encontrado"}), 404
     return jsonify({"dados": usuario, "sucesso": True}), 200
 
 
 def criar():
     dados = request.get_json()
     if not dados:
-        return jsonify({"erro": "Dados invalidos"}), 400
+        return jsonify({"erro": "Dados inválidos"}), 400
     nome = dados.get("nome", "")
     email = dados.get("email", "")
     senha = dados.get("senha", "")
     if not nome or not email or not senha:
-        return jsonify({"erro": "Nome, email e senha sao obrigatorios"}), 400
+        return jsonify({"erro": "Nome, email e senha são obrigatórios"}), 400
     novo_id = usuario_model.criar(nome, email, senha)
     return jsonify({"dados": {"id": novo_id}, "sucesso": True}), 201
 
@@ -45,10 +45,10 @@ def login():
     email = dados.get("email", "")
     senha = dados.get("senha", "")
     if not email or not senha:
-        return jsonify({"erro": "Email e senha sao obrigatorios"}), 400
+        return jsonify({"erro": "Email e senha são obrigatórios"}), 400
     usuario = usuario_model.autenticar(email, senha)
     if not usuario:
-        return jsonify({"erro": "Email ou senha invalidos", "sucesso": False}), 401
+        return jsonify({"erro": "Email ou senha inválidos", "sucesso": False}), 401
     token = _gerar_token(usuario)
     return (
         jsonify(

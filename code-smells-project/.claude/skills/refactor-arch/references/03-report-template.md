@@ -1,6 +1,6 @@
-# 03 — Template de Relatorio de Auditoria
+# 03 — Template de relatório de Auditoria
 
-Modelo padronizado para a **Fase 2**. O relatorio DEVE seguir este formato exato,
+Modelo padronizado para a **Fase 2**. O relatório DEVE seguir este formato exato,
 com os findings ordenados por severidade (CRITICAL → HIGH → MEDIUM → LOW) e cada
 um contendo `File`, `Description`, `Impact` e `Recommendation`.
 
@@ -19,25 +19,25 @@ CRITICAL: <c> | HIGH: <h> | MEDIUM: <m> | LOW: <l>
 
 Findings
 
-[CRITICAL] <Titulo do Anti-Pattern>
+[CRITICAL] <Título do Anti-Pattern>
 File: <caminho>:<linha-inicio>-<linha-fim>
 Description: <o que foi encontrado, contextualizado>
-Impact: <por que importa / consequencia>
-Recommendation: <acao de correcao — referencia ao playbook>
+Impact: <por que importa / consequência>
+Recommendation: <ação de correção — referência ao playbook>
 
-[HIGH] <Titulo>
+[HIGH] <Título>
 File: <caminho>:<linha>
 Description: ...
 Impact: ...
 Recommendation: ...
 
-[MEDIUM] <Titulo>
+[MEDIUM] <Título>
 File: <caminho>:<linha>
 Description: ...
 Impact: ...
 Recommendation: ...
 
-[LOW] <Titulo>
+[LOW] <Título>
 File: <caminho>:<linha>
 Description: ...
 Impact: ...
@@ -50,17 +50,17 @@ Total: <N> findings
 
 ## Regras de preenchimento
 
-1. **Ordem obrigatoria**: CRITICAL primeiro, depois HIGH, MEDIUM, LOW.
+1. **Ordem obrigatória**: CRITICAL primeiro, depois HIGH, MEDIUM, LOW.
 2. **File deve ser exato**: `<caminho-relativo>:<linha>` ou `<linha-inicio>-<linha-fim>`
    para blocos. Use `app.py:7` ou `models.py:289-297`.
-3. **Description**: descreva o QUE foi encontrado (nao o anti-pattern generico).
-   Cite o valor/variavel real. Ex: `"SECRET_KEY hardcoded como 'minha-chave-super-secreta-123'"`.
-4. **Impact**: consequencia concreta. Ex: `"permite falsificacao de sessao"`,
+3. **Description**: descreva o QUE foi encontrado (não o anti-pattern generico).
+   Cite o valor/variável real. Ex: `"SECRET_KEY hardcoded como 'minha-chave-super-secreta-123'"`.
+4. **Impact**: consequência concreta. Ex: `"permite falsificacao de sessão"`,
    `"RCE remoto via debugger Werkzeug"`.
-5. **Recommendation**: acao + referencia ao playbook. Ex: `"Mover para
+5. **Recommendation**: ação + referência ao playbook. Ex: `"Mover para
    `os.environ['SECRET_KEY']` (Playbook #1)"`.
-6. **Nao inclua findings duplicados** para o mesmo problema — agrupe se aplicavel.
-7. **Minimo de 5 findings** por projeto (criterio de aceite).
+6. **Não inclua findings duplicados** para o mesmo problema — agrupe se aplicável.
+7. **Mínimo de 5 findings** por projeto (criterio de aceite).
 
 ## Exemplo completo
 
@@ -80,30 +80,30 @@ Findings
 [CRITICAL] Hardcoded Secrets
 File: app.py:7
 Description: SECRET_KEY definida como 'minha-chave-super-secreta-123' diretamente
-             no codigo, sem leitura de variavel de ambiente.
+             no código, sem leitura de variável de ambiente.
 Impact: Permite falsificacao de sessoes Flask por qualquer pessoa com acesso ao
-        codigo-fonte.
+        código-fonte.
 Recommendation: Mover para os.environ['SECRET_KEY'] com fallback em .env (Playbook #1).
 
 [CRITICAL] SQL Injection
 File: models.py:289-297
-Description: Funcao buscar_produtos concatena termos de busca (termo, categoria,
+Description: função buscar_produtos concatena termos de busca (termo, categoria,
              preco_min, preco_max) diretamente na string SQL via f-string.
-Impact: Endpoint de busca exploravel para injecao SQL — exfiltracao e DROP.
+Impact: Endpoint de busca exploravel para injeção SQL — exfiltracao e DROP.
 Recommendation: Parametrizar com placeholders '?' (Playbook #4).
 
 [CRITICAL] God Class / God Method
 File: models.py:1-314
-Description: Arquivo unico de 314 linhas contem toda logica de negocio, queries SQL,
-             validacao e formatacao para 4 dominios (produtos, usuarios, pedidos, itens).
-Impact: Impossivel testar em isolamento; qualquer mudanca afeta todos os dominios.
-Recommendation: Separar em models e controllers por dominio (Playbook #6).
+Description: Arquivo único de 314 linhas contem toda lógica de negocio, queries SQL,
+             validação e formatação para 4 domínios (produtos, usuarios, pedidos, itens).
+Impact: impossível testar em isolamento; qualquer mudanca afeta todos os domínios.
+Recommendation: Separar em models e controllers por domínio (Playbook #6).
 
 [CRITICAL] Debug Mode RCE
 File: app.py:8,88
 Description: app.run(debug=True, host='0.0.0.0') expoe o debugger interativo do
              Werkzeug em todas as interfaces de rede.
-Impact: Execucao remota de codigo (RCE) por qualquer cliente que alcance a porta 5000.
+Impact: execução remota de código (RCE) por qualquer cliente que alcance a porta 5000.
 Recommendation: debug via env (default False) + bind em localhost (Playbook #5).
 
 [CRITICAL] Sensitive Data Exposure
@@ -116,22 +116,22 @@ Recommendation: Remover 'senha' do to_dict (Playbook #3).
 [HIGH] N+1 Queries
 File: models.py:171-233
 Description: Listagem de pedidos abre, para cada pedido, um cursor para itens e, para
-             cada item, outro cursor para produto — padrao 1+N+N*M queries.
-Impact: Degradacao quadratica de performance; 100 pedidos x 5 itens = 601 queries.
-Recommendation: Substituir por JOIN unico ou joinedload (Playbook #9).
+             cada item, outro cursor para produto — padrão 1+N+N*M queries.
+Impact: degradação quadratica de performance; 100 pedidos x 5 itens = 601 queries.
+Recommendation: Substituir por JOIN único ou joinedload (Playbook #9).
 
 [HIGH] Missing AuthN/AuthZ
 File: app.py:47-78
-Description: Endpoints /admin/reset-db e /admin/query nao possuem qualquer decorator
-             ou middleware de autenticacao/autorizacao.
+Description: Endpoints /admin/reset-db e /admin/query não possuem qualquer decorator
+             ou middleware de autenticação/autorização.
 Impact: Qualquer cliente anonimo pode resetar o banco ou executar SQL arbitrario.
 Recommendation: Adicionar camada de auth + RBAC (Playbook #7).
 
 [HIGH] Business Logic in Controllers
 File: controllers.py:208-210,247-250 (notificacoes); models.py:256-262 (desconto)
-Description: Notificacoes (EMAIL/SMS/PUSH) sao print() inline no controller de
+Description: Notificacoes (EMAIL/SMS/PUSH) são print() inline no controller de
              criar_pedido; a regra de desconto vive dentro do "model" relatorio_vendas.
-Impact: Regras de negocio acopladas ao transporte HTTP; impossivel testar isoladamente.
+Impact: Regras de negocio acopladas ao transporte HTTP; impossível testar isoladamente.
 Recommendation: Extrair para services (notificacao_service, relatorio_service) (Playbook #8).
 
 [MEDIUM] No Centralized Error Handling
@@ -143,8 +143,8 @@ Recommendation: Registrar @app.errorhandler e logar estruturadamente (Playbook #
 
 [MEDIUM] Deprecated API Usage
 File: models.py (múltiplos locais)
-Description: Uso de padrao de driver sqlite3 cru com check_same_thread=False em servidor
-             multi-thread; ausencia de ORM/repository abstrato.
+Description: Uso de padrão de driver sqlite3 cru com check_same_thread=False em servidor
+             multi-thread; ausência de ORM/repository abstrato.
 Impact: Race conditions, queries espalhadas, dificuldade de evolucao do schema.
 Recommendation: Adotar repository pattern ou ORM (Playbook #11).
 
@@ -157,7 +157,7 @@ Recommendation: Extrair para constantes/Enum (Playbook #12).
 
 [LOW] Poor Naming / Shadowing
 File: models.py:187,219 (cursor2, cursor3); models.py:24 (id)
-Description: Variaveis cursor2/cursor3 mascaram o smell N+1; parametro 'id' sombreia
+Description: Variáveis cursor2/cursor3 mascaram o smell N+1; parâmetro 'id' sombreia
              o builtin Python.
 Impact: Legibilidade e manutenibilidade reduzidas.
 Recommendation: Renomear e usar nomes descritivos (Playbook #12).
@@ -167,10 +167,10 @@ Total: 12 findings
 ================================
 ```
 
-## Saida para o humano (console)
+## saída para o humano (console)
 
-Apos salvar em `reports/audit-project-<N>.md`, imprima o relatorio no console e
-entao faca a pausa obrigatoria:
+Após salvar em `reports/audit-project-<N>.md`, imprima o relatório no console e
+então faca a pausa obrigatória:
 
 ```
 ================================
