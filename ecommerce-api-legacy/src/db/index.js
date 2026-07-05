@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3');
 const { hashPassword } = require('../services/passwordService');
+const config = require('../config');
 
 const db = new sqlite3.Database(':memory:');
 
@@ -44,7 +45,7 @@ async function initDb() {
         await run(stmt);
     }
     await run("INSERT INTO users (name, email, pass) VALUES (?, ?, ?)",
-        ['Leonan', 'leonan@fullcycle.com.br', hashPassword('123')]);
+        ['Leonan', 'leonan@fullcycle.com.br', hashPassword(config.seedUserPassword)]);
     await run("INSERT INTO courses (title, price, active) VALUES (?, ?, 1), (?, ?, 1)",
         ['Clean Architecture', 997.00, 'Docker', 497.00]);
     await run("INSERT INTO enrollments (user_id, course_id) VALUES (1, 1)");

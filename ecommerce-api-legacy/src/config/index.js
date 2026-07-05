@@ -8,4 +8,11 @@ module.exports = {
     jwtSecret: process.env.JWT_SECRET || 'dev-only-change-me',
     jwtExpirationHours: parseInt(process.env.JWT_EXPIRATION_HOURS || '8', 10),
     isProd: process.env.NODE_ENV === 'production',
+    seedUserPassword: (() => {
+        const pwd = process.env.SEED_USER_PASSWORD;
+        if (!pwd) {
+            throw new Error('Variável de ambiente obrigatória não definida: SEED_USER_PASSWORD');
+        }
+        return pwd;
+    })(),
 };

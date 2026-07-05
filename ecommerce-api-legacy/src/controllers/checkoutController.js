@@ -12,7 +12,7 @@ class CheckoutError extends Error {
 }
 
 async function process({ name, email, pwd, courseId, cardNumber }) {
-    if (!name || !email || !courseId || !cardNumber) {
+    if (!name || !email || !pwd || !courseId || !cardNumber) {
         throw new CheckoutError('Bad Request', 400);
     }
 
@@ -21,7 +21,7 @@ async function process({ name, email, pwd, courseId, cardNumber }) {
 
     let user = await userModel.findByEmail(email);
     if (!user) {
-        const { lastID } = await userModel.create(name, email, hashPassword(pwd || '123456'));
+        const { lastID } = await userModel.create(name, email, hashPassword(pwd));
         user = await userModel.findById(lastID);
     }
 

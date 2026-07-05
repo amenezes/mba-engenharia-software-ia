@@ -21,12 +21,10 @@ function create(name, email, passwordHash) {
 }
 
 async function authenticate(name, email, pwd) {
-    let user = await findByEmail(email);
-    if (!user) {
-        const { lastID } = await create(name, email, require('../services/passwordService').hashPassword(pwd));
-        user = await db.get('SELECT * FROM users WHERE id = ?', [lastID]);
-    }
-    return toSafeUser(user);
+    const user = await findByEmail(email);
+    if (!user) return null;
+    const ok = await verifyPassword(pwd, user.pass);
+    return ok ? toSafeUser(user) : null;
 }
 
 module.exports = { toSafeUser, findByEmail, findById, create, authenticate };
