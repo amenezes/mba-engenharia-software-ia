@@ -4,6 +4,14 @@
 Cada transformacao referencia o anti-pattern correspondente no
 [catálogo](02-antipatterns-catalog.md).
 
+**Principio de agnosticidade**: Cada transformacao descreve primeiro o **padrao
+abstrato** (o que fazer e por que) e depois exemplos concretos em Python e Node.js
+(como fazer em cada ecossistema). Para outras stacks, aplique o padrao usando a
+biblioteca padrao ou idioma canonico do ecossistema detectado na Fase 1.
+Ex: "substituir hash quebrado por algoritmo de derivacao de chave com salt"
+aplica-se a qualquer linguagem; a escolha da biblioteca (werkzeug, bcrypt, argon2,
+crypto.scrypt) depende do ecossistema.
+
 Principios:
 - Aplique as transformacoes na ordem de severidade dos findings (CRITICAL primeiro).
 - Preserve os contratos HTTP (rotas, verbos, formatos de resposta).
