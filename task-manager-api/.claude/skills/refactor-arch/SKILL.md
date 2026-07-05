@@ -32,9 +32,10 @@ Nao avance para a Fase 3 sem confirmacao explicita do humano (obrigatorio).
 **Passos**:
 
 1. Carregue as heuristicas detalhadas em [references/01-analysis-heuristics.md](references/01-analysis-heuristics.md).
-2. Detecte a **linguagem** (pela extensao dos arquivos e pelos manifestos):
-   - `requirements.txt` ou `pyproject.toml` → Python
-   - `package.json` → Node.js/JavaScript
+2. Detecte a **linguagem** lendo o manifesto de dependencias do projeto
+   (`requirements.txt`, `package.json`, `go.mod`, `pom.xml`, `Cargo.toml`,
+   `composer.json`, etc.) e confirmando pela extensao predominante dos arquivos
+   fonte. As heuristicas completas estao na referencia.
 3. Detecte o **framework e versao exata** lendo o manifesto de dependencias.
 4. Detecte o **banco de dados** (driver, ORM, schema/tabelas).
 5. Identifique o **dominio da aplicacao** (entidades/recursos) pelos nomes de
@@ -46,6 +47,11 @@ Nao avance para a Fase 3 sem confirmacao explicita do humano (obrigatorio).
    - Liste as **rotas GET publicas** (health, listagens de recursos, etc.) — elas
      serao usadas na validacao da Fase 3, passadas como argumentos ao validate.sh.
 7. Conte os arquivos analisados.
+8. Antes de imprimir a saida, verifique internamente:
+   - [ ] Linguagem detectada corretamente?
+   - [ ] Framework e versao conferem com o manifesto?
+   - [ ] Dominio descrito corresponde as entidades/tabelas/rotas?
+   - [ ] Numero de arquivos condiz com a realidade?
 
 **Saida obrigatoria** — imprima exatamente este bloco (preencha os valores):
 
@@ -129,11 +135,13 @@ encontrados, e validar que a aplicacao continua funcionando.
 3. Crie a estrutura MVC alvo:
    - `config/` — settings carregados de env (sem hardcoded)
    - `models/` — dados + serializacao (sem regras de negocio)
-   - `views/` (Python) ou `routes/` (Node) — camada HTTP fina
+   - camada HTTP fina (`views/`, `routes/`, `resources/`, `handlers/` —
+     conforme a convencao de nomenclatura do framework detectado)
    - `controllers/` — orchestracao do fluxo da aplicacao
    - `services/` (quando aplicavel) — regras de negocio extraidas
    - `middlewares/` — error_handler centralizado + auth
-   - Entry point claro (`app.py` / `app.js` com factory `create_app()` quando possivel)
+   - Entry point claro com factory function (`create_app()`, `createApp()`,
+     ou equivalente idiomatico do framework)
 4. Preserve **todos os endpoints originais** (mesmas rotas, mesmos verbos, mesmos
    contratos de resposta). A refatoracao nao e rewrite — a API publica nao muda.
 5. Rode a validacao automatica, passando como argumentos as **rotas GET publicas**
@@ -146,7 +154,11 @@ encontrados, e validar que a aplicacao continua funcionando.
 
    O script detecta o runtime, sobe a aplicacao em background, faz curl em cada
    endpoint (os padrao + os passados como argumentos), verifica os status HTTP e
-   derruba a app. Se falhar, corrija e rode novamente ate passar.
+   derruba a app.
+
+   **FEEDBACK LOOP OBRIGATORIO**: Se o validate.sh falhar, corrija os erros
+   e rode novamente. Repita ate obter PASS em todos os cheques. Esta e a
+   validacao final da refatoracao — sem PASS, a Fase 3 nao esta concluida.
 
 6. Imprima o resultado:
 
@@ -166,8 +178,10 @@ Validation
 
 ## Regras gerais
 
-- **Agnosticidade**: nunca assuma Python ou Node. Detecte pelos manifestos. As
-  heuristicas e o playbook cobrem ambas as linguagens — use a coluna correta.
+- **Agnosticidade**: nunca assuma a linguagem. Detecte pelos manifestos e pela
+  extensao dos arquivos fonte. As heuristicas e o playbook cobrem multiplas
+  linguagens — use os padroes de deteccao e transformacao correspondentes ao
+  ecossistema detectado na Fase 1.
 - **Preserve contratos**: rotas, verbos e formatos de resposta originais devem
   continuar funcionando apos a refatoracao.
 - **Seja especifico nos sinais**: "codigo ruim" nao conta; `query SQL dentro de
