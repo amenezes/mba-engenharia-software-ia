@@ -1,8 +1,15 @@
 # 02 — Catalogo de Anti-Patterns
 
-Catalogo de **12 anti-patterns** com sinais de deteccao agnosticos (funcionam em
-Python e Node.js/JavaScript), classificacao de severidade e referencia ao playbook
-de transformacao.
+Catalogo de **12 anti-patterns** com sinais de deteccao, classificacao de
+severidade e referencia ao playbook de transformacao.
+
+**Principio de agnosticidade**: Os anti-patterns abaixo descrevem **padroes de
+problema** independentes de linguagem ou framework. Os sinais de deteccao
+concretos sao fornecidos para Python e Node.js (escopo do desafio); para outras
+linguagens, aplique os mesmos principios usando os construtos equivalentes do
+ecossistema. O que importa e o *padrao* (ex: "atribuicao de valor literal a
+variavel de configuracao sensivel sem leitura de mecanismo de injecao de
+ambiente"), nao a sintaxe especifica.
 
 ## Como usar
 

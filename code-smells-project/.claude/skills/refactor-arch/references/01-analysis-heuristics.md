@@ -60,6 +60,39 @@ Extraia a versao exata do `==<versao>`. Se houver `flask-cors`, `flask-sqlalchem
 Para o Express, detecte tambem middlewares relevantes: `cors`, `helmet`,
 `body-parser` (deprecated quando separado), `morgan`, `express-validator`.
 
+**Go** (`go.mod`):
+
+| Framework / lib  | String de deteccao             |
+| ---------------- | ------------------------------ |
+| Gin              | `github.com/gin-gonic/gin`     |
+| Echo             | `github.com/labstack/echo`     |
+| Fiber            | `github.com/gofiber/fiber`     |
+| Chi              | `github.com/go-chi/chi`        |
+
+**Java** (`pom.xml` / `build.gradle`):
+
+| Framework / lib  | String de deteccao                    |
+| ---------------- | ------------------------------------- |
+| Spring Boot      | `spring-boot-starter-web`             |
+| Quarkus          | `quarkus-resteasy`                    |
+| Micronaut        | `micronaut-http-server`               |
+
+**Rust** (`Cargo.toml`):
+
+| Framework / lib  | String de deteccao       |
+| ---------------- | ------------------------ |
+| Actix Web        | `actix-web`              |
+| Axum             | `axum`                   |
+| Rocket           | `rocket`                 |
+
+**PHP** (`composer.json`):
+
+| Framework / lib  | String de deteccao          |
+| ---------------- | --------------------------- |
+| Laravel          | `laravel/framework`         |
+| Symfony          | `symfony/http-kernel`       |
+| Slim             | `slim/slim`                 |
+
 ## 3. Detectar o banco de dados
 
 Procure por sinais no codigo fonte (Grep):

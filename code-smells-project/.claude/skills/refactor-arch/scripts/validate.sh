@@ -56,6 +56,16 @@ elif [ -f "server.js" ] && [ -f "package.json" ]; then
     ENTRY="server.js"; RUNTIME="node"
 elif [ -f "main.py" ]; then
     ENTRY="main.py"; RUNTIME="python"
+elif [ -f "main.go" ] && [ -f "go.mod" ]; then
+    ENTRY="main.go"; RUNTIME="go"
+elif [ -f "src/main.rs" ] && [ -f "Cargo.toml" ]; then
+    ENTRY="src/main.rs"; RUNTIME="rust"
+elif [ -f "pom.xml" ]; then
+    ENTRY="pom.xml"; RUNTIME="java"
+elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+    ENTRY="build.gradle"; RUNTIME="java"
+elif [ -f "composer.json" ]; then
+    ENTRY="composer.json"; RUNTIME="php"
 fi
 
 if [ -z "$ENTRY" ]; then
@@ -132,6 +142,32 @@ elif [ "$RUNTIME" = "node" ] && [ -n "$NODE_BIN" ]; then
         log_pass "$NODE_BIN --check $ENTRY"
     else
         log_fail "$NODE_BIN --check $ENTRY"
+    fi
+elif [ "$RUNTIME" = "go" ]; then
+    if command -v go >/dev/null 2>&1 && go vet ./... 2>/dev/null; then
+        log_pass "go vet ./..."
+    else
+        log_fail "go vet ./... (go nao encontrado ou erros de compilacao)"
+    fi
+elif [ "$RUNTIME" = "rust" ]; then
+    if command -v cargo >/dev/null 2>&1 && cargo check 2>/dev/null; then
+        log_pass "cargo check"
+    else
+        log_fail "cargo check (cargo nao encontrado ou erros de compilacao)"
+    fi
+elif [ "$RUNTIME" = "java" ]; then
+    if command -v mvn >/dev/null 2>&1 && mvn compile -q 2>/dev/null; then
+        log_pass "mvn compile"
+    elif command -v gradle >/dev/null 2>&1 && gradle compileJava -q 2>/dev/null; then
+        log_pass "gradle compileJava"
+    else
+        log_fail "compilacao Java (mvn/gradle nao encontrado ou erros)"
+    fi
+elif [ "$RUNTIME" = "php" ]; then
+    if command -v php >/dev/null 2>&1 && php -l "$ENTRY" 2>/dev/null; then
+        log_pass "php -l (lint)"
+    else
+        echo "  [skip] php nao encontrado"
     fi
 fi
 
