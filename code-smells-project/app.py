@@ -15,7 +15,7 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    CORS(app, origins=Config.CORS_ORIGINS if hasattr(Config, "CORS_ORIGINS") else ["*"])
+    CORS(app, origins=["*"])
 
     get_db()
 
