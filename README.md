@@ -1,7 +1,7 @@
 # Desafio 3 — Skill `refactor-arch`
 
 Skill do Claude Code que analisa, audita e refatora projetos legados para o padrão
-MVC, de forma agnóstica de tecnologia (Python/Flask e Node.js/Express).
+MVC, de forma agnóstica de tecnologia.
 
 ---
 
@@ -190,9 +190,14 @@ Result: PASS (8/8)
 Result: PASS (8/8)
 ```
 
-**ecommerce-api-legacy**: código refatorado para MVC (20 arquivos em
-config/db/models/controllers/services/routes/middlewares); validação via `validate.sh`
-requer Node.js instalado no ambiente.
+**ecommerce-api-legacy** (validate.sh):
+```
+[pass] node --check src/app.js
+[pass] Application boots without errors
+[pass] GET /health -> 200
+[pass] GET / -> 200
+Result: PASS (4/4)
+```
 
 ### Critérios de aceite (3/3 projetos)
 
@@ -201,9 +206,7 @@ requer Node.js instalado no ambiente.
 | Fase 1 detecta stack | OK | OK | OK |
 | Fase 2 ≥ 5 findings | 12 | 12 | 12 |
 | Fase 2 ≥ 1 CRITICAL/HIGH | 8 | 7 | 7 |
-| Fase 3 app funciona | PASS | skip* | PASS |
-
-*ecommerce-api-legacy: refatoração completa; validação pendente de Node.js no ambiente.
+| Fase 3 app funciona | PASS | PASS | PASS |
 
 ## D) Como Executar
 
