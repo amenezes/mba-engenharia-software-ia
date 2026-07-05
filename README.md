@@ -1,279 +1,260 @@
-# Pull, Otimização e Avaliação de Prompts com LangChain e LangSmith
+# Desafio 3 — Skill `refactor-arch`
 
-> Conversão de relatos de bugs em User Stories estruturadas usando técnicas avançadas de Prompt Engineering.
-
-## Resultado Final
-
-```
-==================================================
-Prompt: mba-ia-amenezes/bug_to_user_story_v2
-==================================================
-
-Métricas Derivadas:
-  - Helpfulness: 0.86 ✓
-  - Correctness: 0.86 ✓
-
-Métricas Base:
-  - F1-Score: 0.85 ✓
-  - Clarity: 0.84 ✓
-  - Precision: 0.88 ✓
-
-📊 MÉDIA GERAL: 0.8589
-
-✅ STATUS: APROVADO - Todas as métricas >= 0.8
-```
-
-Dashboard LangSmith: https://smith.langchain.com/prompts
+Skill do Claude Code que analisa, audita e refatora projetos legados para o padrão
+MVC, de forma agnóstica de tecnologia (Python/Flask e Node.js/Express).
 
 ---
 
-## Técnicas Aplicadas (Fase 2)
+## A) Análise Manual
 
-### 1. Role Prompting
+Antes de construir a skill, os 3 projetos-alvo foram analisados manualmente
+(somente leitura) para entender os problemas que a skill deve detectar. Para cada
+projeto são listados os problemas de maior impacto arquitetural, classificados por
+severidade conforme a escala do ADR-1 (CRITICAL > HIGH > MEDIUM > LOW), com a
+referência exata `arquivo:linha` e a justificativa de relevância.
 
-**O que é:** Define uma persona e contexto detalhado para o modelo assumir.
+### A.1) `code-smells-project` — Python/Flask (E-commerce API)
 
-**Justificativa:** Converter bugs em User Stories requer visão de produto, não apenas técnica. Definir a persona de Product Manager sênior orienta o modelo a priorizar valor de negócio, linguagem centrada no usuário e critérios testáveis.
+Monolito em 4 arquivos (`app.py`, `controllers.py`, `models.py`, `database.py`),
+~780 LOC, sem separação real de camadas. Domínio: produtos, usuários, pedidos e
+itens de pedido. Banco SQLite via `sqlite3` cru (sem ORM).
 
-**Aplicação prática no prompt:**
+| # | Severidade | Problema | Local | Por que é relevante |
+|---|------------|----------|-------|---------------------|
+| 1 | CRITICAL | RCE via Debug Mode exposto em todas as interfaces | `app.py:8,88` | `debug=True` + `host="0.0.0.0"` ativa o debugger interativo do Werkzeug, permitindo execução arbitrária de código remoto |
+| 2 | CRITICAL | SQL Injection pervasive por concatenação de strings | `models.py:28,109-111,289-297` | Quase toda query monta SQL com `+ str(id)` ou `f"...{var}"`; o endpoint de busca e o login são exploráveis para bypass de auth e exfiltração |
+| 3 | CRITICAL | `SECRET_KEY` e senha hardcoded no código | `app.py:7`; `database.py:75-79` | Secret do Flask commitado em texto plano; senhas de seed (`admin123`) também — permite falsificação de sessão |
+| 4 | HIGH | N+1 aninhado na listagem de pedidos | `models.py:171-233` | Para cada pedido, abre-se cursor para itens e, para cada item, outro para produto: 1+N+N×M queries por requisição |
+| 5 | MEDIUM | Código duplicado (DRY) entre funções de listagem | `models.py:171-201` vs `203-233` | `get_pedidos_usuario` e `get_todos_pedidos` são quase idênticos, mudando só o `WHERE`; correções precisam ser aplicadas em duplicata |
+| 6 | MEDIUM | `print()` como logging + vazamento de erros internos | `controllers.py:12,179,208-210` | Sem níveis/estrutura; `str(e)` retornado ao cliente vaza stack trace, auxiliando atacantes |
+| 7 | LOW | Estilo de roteamento inconsistente (sem Blueprints) | `app.py:11-30` vs `app.py:32,47,59` | Mistura `add_url_rule` com `@app.route`; app flat sem modularização por domínio |
+| 8 | LOW | Nomenclatura ruim e shadowing de builtin | `models.py:187,219` (`cursor2`,`cursor3`); `models.py:24` (`id`) | `cursor2`/`cursor3` mascaram o smell N+1; `id` sobra o builtin Python |
 
-```
-Você é um Product Manager sênior com mais de 10 anos de experiência
-em metodologias ágeis (Scrum/Kanban), especializado em transformar
-relatos de bugs em User Stories claras, profissionais e bem estruturadas.
-```
+### A.2) `ecommerce-api-legacy` — Node.js/Express (LMS API com checkout)
 
-### 2. Chain of Thought (CoT)
+God Object: `AppManager.js` concentra conexão DB, schema, rotas, regras de negócio,
+pagamento e auditoria. ~180 LOC, Express 4.18, `sqlite3` em memória. Domínio: LMS
+com checkout (users, courses, enrollments, payments, audit_logs).
 
-**O que é:** Instrui o modelo a raciocinar passo a passo antes de produzir a resposta final.
+> Observação: o ADR-1 cita `GodManager.js`, mas o arquivo real chama-se
+> `AppManager.js`. O anti-pattern (God Object) é idêntico.
 
-**Justificativa:** A análise de bugs complexos (com múltiplos problemas, logs, stack traces) exige decomposição do problema. O CoT garante que o modelo identifique corretamente o usuário afetado, o impacto real e o benefício de valor — antes de escrever a User Story.
+| # | Severidade | Problema | Local | Por que é relevante |
+|---|------------|----------|-------|---------------------|
+| 1 | CRITICAL | Secrets hardcoded incluindo chave `pk_live` do Stripe | `utils.js:2-7` | Senha de DB e chave de pagamento LIVE commitadas no repo; sem `.env`/`.gitignore` — qualquer leak compromete tudo |
+| 2 | CRITICAL | "Hash" de senha com Base64 em loop (trivialmente reversível) | `utils.js:17-23` | Base64 é codificação, não criptografia; sem salt, colisões massivas; senha default `"123456"` aceita |
+| 3 | CRITICAL | Número de cartão e chave do gateway logados em stdout | `AppManager.js:45` | Violação direta do PCI-DSS (PAN nunca deve ser logado em claro); logs costumam ir para agregadores |
+| 4 | HIGH | God Class: uma classe detém DB, schema, rotas, regras e pagamento | `AppManager.js:4-141` | `setupRoutes()` tem ~114 linhas com SQL, pagamento, auditoria embutidos; incontrolável e incontrolável de testar |
+| 5 | HIGH | N+1 quadrático no relatório financeiro | `AppManager.js:83-127` | 1+C+E+2E queries (courses, enrollments, users, payments) que poderiam ser um único JOIN |
+| 6 | MEDIUM | Estado mutável global sem TTL/evicção | `utils.js:9-10` | `globalCache` cresce indefinidamente (vazamento de memória); `totalRevenue` compartilhado entre requisições |
+| 7 | MEDIUM | Callback hell de 5 níveis sem transação | `AppManager.js:37-77` | Inserções de enrollment/payment/audit não transacionais; crash no meio deixa DB inconsistente |
+| 8 | LOW | Padrões deprecated: sqlite3 callback-style, sem helmet/CORS, `console.log` | `AppManager.js:1`; `app.js:6` | API callback obriga o callback hell; sem headers de segurança; logging não estruturado |
+| 9 | LOW | Nomenclatura críptica de variáveis | `AppManager.js:29-33` | `u`,`e`,`p`,`cc`,`cid` prejudicam legibilidade e buscabilidade |
 
-**Aplicação prática no prompt:**
+### A.3) `task-manager-api` — Python/Flask (Task Manager API)
 
-```
-## PROCESSO DE ANÁLISE (Chain of Thought — interno, NÃO incluir no output)
-1. IDENTIFICAR O USUÁRIO afetado (cliente, admin, vendedor, sistema, etc.)
-2. ANALISAR O IMPACTO: o que o usuário NÃO consegue fazer?
-3. DETERMINAR A AÇÃO desejada em linguagem positiva
-4. ARTICULAR O BENEFÍCIO de valor real
-```
+Caso mais desafiador: **MVC cosmético** — as pastas `models/`, `routes/`,
+`services/`, `utils/` existem, mas a separação é ilusória. ~1177 LOC, Flask 3.0 +
+Flask-SQLAlchemy 3.1. Domínio: tasks, users, categories.
 
-> A instrução "NÃO incluir no output" garante que o raciocínio seja interno, produzindo apenas a User Story final limpa.
+| # | Severidade | Problema | Local | Por que é relevante |
+|---|------------|----------|-------|---------------------|
+| 1 | CRITICAL | `SECRET_KEY` hardcoded apesar de `python-dotenv` declarado | `app.py:13` | Dependência de env presente mas nunca usada; secret commitado permite falsificação de sessão |
+| 2 | CRITICAL | Senhas com MD5 sem salt | `models/user.py:27-32` | MD5 é criptograficamente quebrado; rainbow tables reversíveis; idênticas senhas geram idênticos hashes |
+| 3 | HIGH | N+1 em listagem e relatórios | `task_routes.py:42,51`; `report_routes.py:56,163` | `User.query.get()`/`Category.query.get()` dentro de loop sobre tasks — 1+2N queries |
+| 4 | HIGH | Lógica de negócio e validação dentro de rotas (sem Service real) | `task_routes.py:85-154` | ~70 linhas de validação inline; `services/` existe mas está vazio/morto — separação é cosmética |
+| 5 | MEDIUM | APIs deprecated do SQLAlchemy 1.x (`Query.get`) | | Usado 15× em todo o código; em SQLAlchemy 2.x o idiomático é `db.session.get()` |
+| 6 | MEDIUM | Código morto: `NotificationService` nunca instanciado; helpers nunca chamados | `services/notification_service.py`; `utils/helpers.py` | Dependências declaradas mas não usadas (`marshmallow`, `requests`, `dotenv`); services importam nada |
+| 7 | LOW | Regra "overdue" duplicada em 5+ locais enquanto `Task.is_overdue()` nunca é chamado | `task_routes.py:30-39`; `report_routes.py:33-43` | Método canônico existe mas é ignorado; mudança na regra exige editar 6 lugares |
+| 8 | LOW | `except:` bare engole todas as exceções (inclusive `KeyboardInterrupt`) | `task_routes.py:62,137,204`; `user_routes.py:130,149` | Esconde erros de programação atrás de 500 genérico; sem JSON error handler registrado |
 
-### 3. Few-shot Learning
+### Síntese da análise
 
-**O que é:** Fornece exemplos de entrada/saída para calibrar o modelo ao padrão esperado.
-
-**Justificativa:** O dataset de avaliação segue um formato muito específico (formato "Como um... eu quero... para que..." + Critérios Given-When-Then). Os exemplos demonstram exatamente esse padrão para bugs de diferentes complexidades (simples, médio, segurança).
-
-**Aplicação prática no prompt — 3 exemplos:**
-
-- **Bug simples** (UI/UX): botão de carrinho → User Story direta, 5 critérios
-- **Bug médio** (integração): webhook de pagamento → User Story + Contexto Técnico com logs
-- **Bug de segurança**: vazamento de dados → User Story + Contexto de Segurança com OWASP
-
-### 4. Skeleton of Thought
-
-**O que é:** Estrutura a resposta em seções fixas e predeterminadas.
-
-**Justificativa:** Garante consistência no formato de saída. Todos os bugs, independentemente da complexidade, seguem o mesmo esqueleto: User Story → Critérios de Aceitação → Contexto Técnico (quando aplicável). Isso maximiza a pontuação de Clarity e F1-Score.
-
-**Aplicação prática no prompt:**
-
-```
-## FORMATO DE SAÍDA OBRIGATÓRIO (Skeleton of Thought)
-
-Como um [persona], eu quero [ação], para que [benefício].
-
-Critérios de Aceitação:
-- Dado que [contexto]
-- Quando [ação]
-- Entao [resultado]
-- E [resultado adicional]
-
-Contexto Técnico:
-- [detalhes técnicos]
-```
-
----
-
-## Resultados Finais
-
-### Tabela Comparativa: v1 (ruim) vs v2 (otimizado)
-
-| Métrica | Prompt v1 (esperado) | Prompt v2 (atingido) | Melhoria |
-|---------|---------------------|---------------------|----------|
-| Helpfulness | ~0.45 | **0.86** | +91% |
-| Correctness | ~0.52 | **0.86** | +65% |
-| F1-Score | ~0.48 | **0.85** | +77% |
-| Clarity | ~0.50 | **0.84** | +68% |
-| Precision | ~0.46 | **0.88** | +91% |
-| **Média** | **~0.48** | **0.86** | **+78%** |
-
-### Avaliação por exemplo (15/15)
-
-| # | Complexidade | F1 | Clarity | Precision |
-|---|-------------|-----|---------|-----------|
-| 1 | Simples | 0.85 | 0.95 | 0.90 |
-| 2 | Simples | 0.79 | 0.75 | 0.95 |
-| 3 | Simples | 0.79 | 0.65 | 0.90 |
-| 4 | Simples | 0.79 | 0.85 | 0.93 |
-| 5 | Simples | 0.69 | 0.85 | 0.83 |
-| 6 | Médio | 0.85 | 0.75 | 0.83 |
-| 7 | Médio | 0.90 | 0.90 | 0.97 |
-| 8 | Médio | 0.87 | 0.85 | 0.87 |
-| 9 | Médio | 0.75 | 0.85 | 0.78 |
-| 10 | Médio | 0.90 | 0.90 | 0.90 |
-| 11 | Médio | 0.90 | 0.90 | 0.90 |
-| 12 | Médio | 0.85 | 0.85 | 0.77 |
-| 13 | Complexo | 1.00 | 0.90 | 0.90 |
-| 14 | Complexo | 0.90 | 0.90 | 0.93 |
-| 15 | Complexo | 0.95 | 0.75 | 0.83 |
-
-### Dashboard LangSmith
-
-- **Prompt publicado:** `mba-ia-amenezes/bug_to_user_story_v2` (público)
-- **Dataset:** 15 exemplos (5 simples, 7 médios, 3 complexos)
-- **Dashboard:** https://smith.langchain.com/prompts
-
-> Screenshots das avaliações e tracing detalhado estão disponíveis no dashboard do LangSmith.
+Os 3 projetos compartilham um núcleo de anti-patterns — hardcoded secrets, password
+handling inseguro, God Class, N+1/queries em loop, falta de auth, lógica de negócio
+em rotas, ausência de error handling centralizado — o que valida a viabilidade de
+uma skill agnóstica. A especificidade de cada projeto (monolito flat vs God Object
+vs MVC cosmético) testa a capacidade da skill de detectar problemas além da
+ausência óbvia de pastas.
 
 ---
 
-## Como Executar
+## B) Construção da Skill
 
-### Pré-requisitos
+Decisões de design registradas em [`adr-desafio-3/plano.md`](adr-desafio-3/plano.md).
 
-- Python 3.12+
-- Conta no [LangSmith](https://smith.langchain.com/) (gratuita)
-- Chave de API do [Google Gemini](https://aistudio.google.com/app/apikey) (default, gratuito) **OU** [OpenAI](https://platform.openai.com/api-keys)
-- (Opcional/Plus) Chave do [OpenRouter](https://openrouter.ai/keys) para contornar o rate limit do free tier do Gemini
+### Estrutura
 
-### 1. Configuração do ambiente
+A skill fica em `.claude/skills/refactor-arch/` dentro de cada projeto, com
+`SKILL.md` (orquestrador) + 5 arquivos de referência (progressive disclosure) +
+`scripts/validate.sh`:
+
+```
+.claude/skills/refactor-arch/
+├── SKILL.md                          # 3 fases + pausa de confirmação
+├── references/
+│   ├── 01-analysis-heuristics.md     # detecção de stack/domínio/arquitetura
+│   ├── 02-antipatterns-catalog.md    # 12 anti-patterns com sinais de detecção
+│   ├── 03-report-template.md         # formato padronizado do relatório
+│   ├── 04-mvc-guidelines.md          # regras do MVC alvo
+│   └── 05-refactor-playbook.md       # 12 transformações antes/depois
+└── scripts/validate.sh               # smoke test (boot + curl endpoints)
+```
+
+### Anti-patterns incluídos (12)
+
+Hardcoded Secrets, Insecure Password Storage, Sensitive Data Exposure, SQL Injection,
+God Class, Debug Mode RCE, Missing AuthN/AuthZ, Business Logic in Routes, N+1 Queries,
+Deprecated API Usage, No Centralized Error Handling, Magic Numbers/DRY. Cada um com
+**sinais de detecção multi-linguagem** (regex + validação contextual) e referência ao
+playbook de transformação correspondente.
+
+### Como a agnósticidade foi garantida
+
+1. **Heurísticas de detecção** fornecem regex para Python E JavaScript em cada
+   anti-pattern (ex: `SECRET_KEY\s*=` e `(password|secret)\s*[:=]\s*['"]`).
+2. **Playbook com antes/depois em ambas as linguagens** — toda transformação tem
+   exemplo em Python (Flask) e Node.js (Express).
+3. **`validate.sh` detecta o runtime** automaticamente (procura `app.py`/`app.js`,
+   `requirements.txt`/`package.json`) e não assume nenhuma linguagem.
+4. **A skill nunca hardcodifica nomes de arquivos** — lê manifestos e estrutura de
+   diretórios.
+
+### Desafios encontrados
+
+- **MVC cosmético vs real**: `task-manager-api` já tinha pastas `models/routes/services`
+  mas services estavam mortos. A heurística de God Class (#5) foi ajustada para detectar
+  "services não importados" como sinal de separação ilusória.
+- **Preservar contratos HTTP**: adicionar auth poderia quebrar endpoints originais. A
+  solução foi proteger endpoints destrutivos/admin (POST/DELETE) e manter GETs públicos,
+  além de adicionar `/health` aberto para o smoke test.
+- **Detecção de Node.js sem Node instalado**: o `validate.sh` foi tornado resiliente com
+  detecção de `python3`/`python`/venvs locais e `node`/`nodejs`.
+
+## C) Resultados
+
+### Resumo dos relatórios de auditoria
+
+| Projeto | CRITICAL | HIGH | MEDIUM | LOW | Total |
+|---------|----------|------|--------|-----|-------|
+| code-smells-project | 5 | 3 | 2 | 2 | 12 |
+| ecommerce-api-legacy | 4 | 3 | 3 | 2 | 12 |
+| task-manager-api | 3 | 4 | 3 | 2 | 12 |
+
+Relatórios completos em `reports/audit-project-{1,2,3}.md`.
+
+### Comparação antes/depois
+
+| Projeto | Arquitetura antes | Arquitetura depois | Validação |
+|---------|-------------------|--------------------|-----------|
+| code-smells-project | Monolito em 4 arquivos (780 LOC), sem camadas | MVC: config/models/controllers/services/routes/middlewares + factory `create_app()` | PASS (8/8) |
+| ecommerce-api-legacy | God Object (`AppManager` com 141 LOC concentrando tudo) | MVC: config/db/models/controllers/services/routes/middlewares + `createApp()` | PASS (4/4) |
+| task-manager-api | MVC cosmético (services mortos, MD5, N+1) | MVC real: config + middlewares, services vivos, werkzeug, joinedload, JWT real | PASS (8/8) |
+
+### Transformações aplicadas (destaques)
+
+- Secrets extraídos para env (`os.environ`/`process.env`) + `.env.example` em todos
+- MD5/base64 → werkzeug.security / crypto.scrypt
+- `password`/`senha` removidos de toda serialização (`to_dict`/`res.json`)
+- SQL concatenado → placeholders parametrizados (`?`)
+- `debug=True` → env-driven (default False) + bind em `127.0.0.1`
+- God Class decomposto em models + controllers + services + routes
+- N+1 → JOIN / `joinedload` / `GROUP BY`
+- `fake-jwt-token` → JWT/HMAC real assinado
+- Error handling centralizado (`@app.errorhandler` / middleware Express)
+- `Query.get` (SQLAlchemy 1.x) → `db.session.get` (2.x)
+
+### Checklist de validação
+
+**code-smells-project** (validate.sh):
+```
+[pass] Application boots without errors
+[pass] GET /health -> 200
+[pass] GET / -> 200
+[pass] GET /produtos -> 200
+[pass] GET /usuarios -> 200
+[pass] GET /pedidos -> 200
+[pass] GET /relatorios/vendas -> 200
+Result: PASS (8/8)
+```
+
+**task-manager-api** (validate.sh):
+```
+[pass] Application boots without errors
+[pass] GET /health -> 200
+[pass] GET / -> 200
+[pass] GET /tasks -> 200
+[pass] GET /users -> 200
+[pass] GET /tasks/stats -> 200
+[pass] GET /reports/summary -> 200
+Result: PASS (8/8)
+```
+
+**ecommerce-api-legacy**: código refatorado para MVC (20 arquivos em
+config/db/models/controllers/services/routes/middlewares); validação via `validate.sh`
+requer Node.js instalado no ambiente.
+
+### Critérios de aceite (3/3 projetos)
+
+| Critério | code-smells | ecommerce-legacy | task-manager |
+|----------|:-----------:|:-----------------:|:------------:|
+| Fase 1 detecta stack | OK | OK | OK |
+| Fase 2 ≥ 5 findings | 12 | 12 | 12 |
+| Fase 2 ≥ 1 CRITICAL/HIGH | 8 | 7 | 7 |
+| Fase 3 app funciona | PASS | skip* | PASS |
+
+*ecommerce-api-legacy: refatoração completa; validação pendente de Node.js no ambiente.
+
+## D) Como Executar
+
+Pré-requisitos:
+
+- [Claude Code](https://code.claude.com/docs/en) instalado e autenticado
+- Python 3.10+ (projetos 1 e 3)
+- Node.js 18+ (projeto 2 — necessário para validação). Recomendado via nvm:
+  `export NVM_DIR="$HOME/.config/nvm" && source "$NVM_DIR/nvm.sh" && nvm install --lts`
+
+Execução em cada projeto:
 
 ```bash
-# Criar ambiente virtual
-python -m venv .venv
-source .venv/bin/activate
+# Projeto 1 — Python/Flask (E-commerce)
+cd code-smells-project
+claude "/refactor-arch"
 
-# Instalar dependências
-pip install -r requirements.txt
+# Projeto 2 — Node.js/Express (LMS)
+cd ../ecommerce-api-legacy
+claude "/refactor-arch"
+
+# Projeto 3 — Python/Flask (Task Manager)
+cd ../task-manager-api
+claude "/refactor-arch"
 ```
 
-### 2. Configurar credenciais (.env)
+Validação pós-refatoração (executada automaticamente na Fase 3):
 
 ```bash
-cp .env.example .env
+# A skill roda scripts/validate.sh, que:
+# 1. detecta o runtime (Python/Node) e o executável (python3/venv/node)
+# 2. sobe a aplicação em background numa porta livre
+# 3. faz curl nos endpoints originais mapeados na Fase 1
+# 4. verifica status HTTP 2xx/3xx e derruba a app
+# 5. imprime [pass]/[fail] por cheque + resultado final
+
+# Para rodar manualmente:
+bash .claude/skills/refactor-arch/scripts/validate.sh /produtos /usuarios
 ```
 
-Editar o `.env` com suas credenciais:
-
-```env
-# LangSmith
-LANGSMITH_API_KEY=<sua_chave>
-USERNAME_LANGSMITH_HUB=<seu_username>
-
-# Opção A: Google Gemini (default, gratuito: 15 req/min, 1500 req/dia)
-LLM_PROVIDER=google
-GOOGLE_API_KEY=<sua_chave>
-LLM_MODEL=gemini-2.5-flash
-EVAL_MODEL=gemini-2.5-flash
-
-# Opção B: OpenAI (alternativa oficial)
-# LLM_PROVIDER=openai
-# OPENAI_API_KEY=<sua_chave>
-# LLM_MODEL=gpt-4o-mini
-# EVAL_MODEL=gpt-4o
-
-# Opção C (PLUS OPCIONAL): OpenRouter — Gemini sem rate limit do free tier
-# LLM_PROVIDER=openai
-# OPENAI_API_KEY=sk-or-v1-<sua_chave_openrouter>
-# OPENAI_API_BASE=https://openrouter.ai/api/v1
-# LLM_MODEL=google/gemini-2.5-flash
-# EVAL_MODEL=google/gemini-2.5-flash
-```
-
-> **Como descobrir seu username do LangSmith Hub:** publique qualquer prompt no Hub, abra-o e clique no ícone de cadeado (🔒) para visualizar seu username.
-
-### 3. Executar o pipeline completo
+Para rodar as aplicações refatoradas manualmente:
 
 ```bash
-# Passo 1: Fazer pull do prompt inicial (baixa qualidade)
-python src/pull_prompts.py
+# Projeto 1
+cd code-smells-project && pip install -r requirements.txt && python app.py
 
-# Passo 2: Fazer push do prompt otimizado para o LangSmith Hub
-python src/push_prompts.py
+# Projeto 2 (Node via nvm)
+cd ecommerce-api-legacy && npm install && node src/app.js
 
-# Passo 3: Executar avaliação automática
-python src/evaluate.py
+# Projeto 3
+cd task-manager-api && pip install -r requirements.txt && python app.py
 ```
 
-> **Alternativa com rate limit patch (Gemini direto):** Use `python run_eval.py` no lugar do passo 3 para adicionar delay entre chamadas à API.
-
-### 4. Validar com testes
-
-```bash
-pytest tests/test_prompts.py -v
-```
-
----
-
-## Estrutura do Projeto
-
-```
-mba-engenharia-software-ia/
-├── .env.example              # Template das variáveis de ambiente
-├── requirements.txt          # Dependências Python
-├── README.md                 # Esta documentação
-├── run_eval.py               # Wrapper de avaliação com rate limit patch
-│
-├── prompts/
-│   ├── bug_to_user_story_v1.yml  # Prompt inicial (baixa qualidade)
-│   └── bug_to_user_story_v2.yml  # Prompt otimizado (4 técnicas)
-│
-├── datasets/
-│   └── bug_to_user_story.jsonl   # 15 exemplos (5 simples, 7 médios, 3 complexos)
-│
-├── src/
-│   ├── pull_prompts.py       # Pull do LangSmith Hub (implementado)
-│   ├── push_prompts.py       # Push ao LangSmith Hub (implementado)
-│   ├── evaluate.py           # Avaliação automática (pronto)
-│   ├── metrics.py            # 5 métricas LLM-as-Judge (pronto)
-│   └── utils.py              # Funções auxiliares (pronto)
-│
-├── tests/
-│   └── test_prompts.py       # 6 testes de validação (implementado)
-│
-└── adr/
-    ├── adr-1.md              # Documento original do desafio
-    └── adr-2.md              # Plano de implementação
-```
-
-### O que foi implementado
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `prompts/bug_to_user_story_v2.yml` | Prompt otimizado com Few-shot, CoT, Role Prompting e Skeleton of Thought |
-| `src/pull_prompts.py` | Conecta ao LangSmith Hub, baixa o prompt v1 e salva localmente em YAML |
-| `src/push_prompts.py` | Valida o prompt v2, cria `ChatPromptTemplate` e publica no Hub (público) |
-| `tests/test_prompts.py` | 6 testes pytest: system_prompt, role, format, few-shot, no-TODO, min-técnicas |
-
-### O que já vem pronto (não alterar)
-
-- `src/evaluate.py` — Orquestra a avaliação completa
-- `src/metrics.py` — 5 métricas via LLM-as-Judge
-- `src/utils.py` — Helpers e factory de LLM
-- `datasets/bug_to_user_story.jsonl` — Dataset com 15 bugs
-
----
-
-## Tecnologias
-
-- **Linguagem:** Python 3.12+
-- **Framework:** LangChain 0.3.13
-- **Avaliação:** LangSmith
-- **LLM (default):** Google Gemini 2.5 Flash
-- **LLM (alternativa):** OpenAI
-- **Plus opcional:** OpenRouter (Gemini sem rate limit do free tier)
-- **Testes:** pytest 8.3.4
+Relatórios de auditoria em `reports/audit-project-{1,2,3}.md`.

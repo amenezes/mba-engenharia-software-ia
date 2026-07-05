@@ -9,3 +9,12 @@ wheels/
 # Virtual environments
 .venv
 .env
+
+# Node
+node_modules/
+
+# Runtime / DB artifacts
+*.db
+*.sqlite
+*.sqlite3
+*.log
