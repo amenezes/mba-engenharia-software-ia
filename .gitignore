@@ -1,20 +1,11 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-.env
-
-# Node
 node_modules/
-
-# Runtime / DB artifacts
-*.db
-*.sqlite
-*.sqlite3
+dist/
+coverage/
+.env
+.env.local
+.env.*.local
 *.log
+.DS_Store
+.idea/
+.vscode/
+*.tsbuildinfo

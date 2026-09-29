@@ -1,263 +1,90 @@
-# Desafio 3 — Skill `refactor-arch`
+# Desafio 6 — Da Reunião ao Documento: Design Docs Gerados por IA
 
-Skill do Claude Code que analisa, audita e refatora projetos legados para o padrão
-MVC, de forma agnóstica de tecnologia.
+## Sobre o desafio
 
----
+O desafio consiste em transformar a transcrição de uma reunião técnica de ~55 minutos ([`TRANSCRICAO.md`](TRANSCRICAO.md)) — na qual tech lead, PM, dois engenheiros e uma engenheira de segurança decidem como construir um **Sistema de Webhooks de Notificação de Pedidos** para um Order Management System (OMS) já em produção — em um pacote completo de design docs: PRD, RFC, FDD, 6 ADRs e um Tracker de rastreabilidade.
 
-## A) Análise Manual
+A regra de ouro é que **nenhuma informação pode ser inventada**: cada requisito, decisão ou restrição precisa ter origem identificável na transcrição (timestamp + falante) ou no código existente (`src/`, `prisma/`, `tests/`). A entrega é puramente documental — o código da aplicação não foi alterado; ele serve de contexto e referência. O enunciado original do desafio está preservado no repositório base (`mba-ia-desafio-design-docs-com-ia`).
 
-Antes de construir a skill, os 3 projetos-alvo foram analisados manualmente
-(somente leitura) para entender os problemas que a skill deve detectar. Para cada
-projeto são listados os problemas de maior impacto arquitetural, classificados por
-severidade conforme a escala do ADR-1 (CRITICAL > HIGH > MEDIUM > LOW), com a
-referência exata `arquivo:linha` e a justificativa de relevância.
+## Ferramentas de IA utilizadas
 
-### A.1) `code-smells-project` — Python/Flask (E-commerce API)
+| Ferramenta | Papel |
+| --- | --- |
+| **Pi (coding agent)** — provider `qwen-token-plan-individual`, modelo `qwen3.8-max` | Ferramenta principal de produção: leitura integral da transcrição e do código, extração de decisões/requisitos/descartes com timestamp, redação de PRD, RFC, FDD, ADRs e Tracker, e verificação de conformidade contra os critérios de aceite |
+| **Bash/grep/find (via agente)** | Verificação mecânica de evidências: contagem de linhas do Tracker, validação de formato `[hh:mm] Nome`, confirmação de existência de todo caminho de código citado nos documentos |
 
-Monolito em 4 arquivos (`app.py`, `controllers.py`, `models.py`, `database.py`),
-~780 LOC, sem separação real de camadas. Domínio: produtos, usuários, pedidos e
-itens de pedido. Banco SQLite via `sqlite3` cru (sem ORM).
+## Workflow adotado
 
-| # | Severidade | Problema | Local | Por que é relevante |
-|---|------------|----------|-------|---------------------|
-| 1 | CRITICAL | RCE via Debug Mode exposto em todas as interfaces | `app.py:8,88` | `debug=True` + `host="0.0.0.0"` ativa o debugger interativo do Werkzeug, permitindo execução arbitrária de código remoto |
-| 2 | CRITICAL | SQL Injection pervasive por concatenação de strings | `models.py:28,109-111,289-297` | Quase toda query monta SQL com `+ str(id)` ou `f"...{var}"`; o endpoint de busca e o login são exploráveis para bypass de auth e exfiltração |
-| 3 | CRITICAL | `SECRET_KEY` e senha hardcoded no código | `app.py:7`; `database.py:75-79` | Secret do Flask commitado em texto plano; senhas de seed (`admin123`) também — permite falsificação de sessão |
-| 4 | HIGH | N+1 aninhado na listagem de pedidos | `models.py:171-233` | Para cada pedido, abre-se cursor para itens e, para cada item, outro para produto: 1+N+N×M queries por requisição |
-| 5 | MEDIUM | Código duplicado (DRY) entre funções de listagem | `models.py:171-201` vs `203-233` | `get_pedidos_usuario` e `get_todos_pedidos` são quase idênticos, mudando só o `WHERE`; correções precisam ser aplicadas em duplicata |
-| 6 | MEDIUM | `print()` como logging + vazamento de erros internos | `controllers.py:12,179,208-210` | Sem níveis/estrutura; `str(e)` retornado ao cliente vaza stack trace, auxiliando atacantes |
-| 7 | LOW | Estilo de roteamento inconsistente (sem Blueprints) | `app.py:11-30` vs `app.py:32,47,59` | Mistura `add_url_rule` com `@app.route`; app flat sem modularização por domínio |
-| 8 | LOW | Nomenclatura ruim e shadowing de builtin | `models.py:187,219` (`cursor2`,`cursor3`); `models.py:24` (`id`) | `cursor2`/`cursor3` mascaram o smell N+1; `id` sobra o builtin Python |
+1. **Análise antes de escrever**: leitura completa da `TRANSCRICAO.md` e mapeamento do código (`src/modules/orders/order.service.ts`, `order.status.ts`, `src/shared/errors/*`, `src/middlewares/*`, `prisma/schema.prisma`, `src/app.ts`, `src/server.ts`, `src/config/*`) para saber exatamente o que existia e podia ser citado.
+2. **Extração dirigida com rastreio**: em vez de "gere um PRD da transcrição", a extração foi fatiada por categoria — decisões fechadas, requisitos funcionais, restrições não funcionais, **itens descartados/adiados** (escopo negativo), ganchos com o código — sempre anotando `[hh:mm] Nome` de cada trecho.
+3. **Ordem de produção**: **ADRs primeiro** (as decisões fechadas são o esqueleto do pacote) → **PRD** (produto/negócio) → **RFC** (proposta de arquitetura, concisa, linkando os ADRs) → **FDD** (implementação detalhada, ancorada nos arquivos reais) → **TRACKER** (referência cruzada de tudo) → **README** (este documento, por último, relatando o processo real).
+4. **Fronteiras entre documentos**: cada documento opera numa altura (produto × arquitetura × decisão × implementação); conteúdo de implementação foi mantido fora do RFC e conteúdo de produto fora do FDD, para evitar duplicação.
+5. **Validação final contra os critérios de aceite**: checklist item a item, com verificação mecânica (grep) de contagens, formatos de timestamp e existência dos caminhos de código citados.
 
-### A.2) `ecommerce-api-legacy` — Node.js/Express (LMS API com checkout)
+## Prompts customizados
 
-God Object: `AppManager.js` concentra conexão DB, schema, rotas, regras de negócio,
-pagamento e auditoria. ~180 LOC, Express 4.18, `sqlite3` em memória. Domínio: LMS
-com checkout (users, courses, enrollments, payments, audit_logs).
+**Prompt 1 — Extração com escopo negativo (anti-alucinação)**:
 
-> Observação: o ADR-1 cita `GodManager.js`, mas o arquivo real chama-se
-> `AppManager.js`. O anti-pattern (God Object) é idêntico.
-
-| # | Severidade | Problema | Local | Por que é relevante |
-|---|------------|----------|-------|---------------------|
-| 1 | CRITICAL | Secrets hardcoded incluindo chave `pk_live` do Stripe | `utils.js:2-7` | Senha de DB e chave de pagamento LIVE commitadas no repo; sem `.env`/`.gitignore` — qualquer leak compromete tudo |
-| 2 | CRITICAL | "Hash" de senha com Base64 em loop (trivialmente reversível) | `utils.js:17-23` | Base64 é codificação, não criptografia; sem salt, colisões massivas; senha default `"123456"` aceita |
-| 3 | CRITICAL | Número de cartão e chave do gateway logados em stdout | `AppManager.js:45` | Violação direta do PCI-DSS (PAN nunca deve ser logado em claro); logs costumam ir para agregadores |
-| 4 | HIGH | God Class: uma classe detém DB, schema, rotas, regras e pagamento | `AppManager.js:4-141` | `setupRoutes()` tem ~114 linhas com SQL, pagamento, auditoria embutidos; incontrolável e impossível de testar |
-| 5 | HIGH | N+1 quadrático no relatório financeiro | `AppManager.js:83-127` | 1+C+E+2E queries (courses, enrollments, users, payments) que poderiam ser um único JOIN |
-| 6 | MEDIUM | Estado mutável global sem TTL/evicção | `utils.js:9-10` | `globalCache` cresce indefinidamente (vazamento de memória); `totalRevenue` compartilhado entre requisições |
-| 7 | MEDIUM | Callback hell de 5 níveis sem transação | `AppManager.js:37-77` | Inserções de enrollment/payment/audit não transacionais; crash no meio deixa DB inconsistente |
-| 8 | LOW | Padrões deprecated: sqlite3 callback-style, sem helmet/CORS, `console.log` | `AppManager.js:1`; `app.js:6` | API callback obriga o callback hell; sem headers de segurança; logging não estruturado |
-| 9 | LOW | Nomenclatura críptica de variáveis | `AppManager.js:29-33` | `u`,`e`,`p`,`cc`,`cid` prejudicam legibilidade e buscabilidade |
-
-### A.3) `task-manager-api` — Python/Flask (Task Manager API)
-
-Caso mais desafiador: **MVC cosmético** — as pastas `models/`, `routes/`,
-`services/`, `utils/` existem, mas a separação é ilusória. ~1177 LOC, Flask 3.0 +
-Flask-SQLAlchemy 3.1. Domínio: tasks, users, categories.
-
-| # | Severidade | Problema | Local | Por que é relevante |
-|---|------------|----------|-------|---------------------|
-| 1 | CRITICAL | `SECRET_KEY` hardcoded apesar de `python-dotenv` declarado | `app.py:13` | Dependência de env presente mas nunca usada; secret commitado permite falsificação de sessão |
-| 2 | CRITICAL | Senhas com MD5 sem salt | `models/user.py:27-32` | MD5 é criptograficamente quebrado; rainbow tables reversíveis; idênticas senhas geram idênticos hashes |
-| 3 | HIGH | N+1 em listagem e relatórios | `task_routes.py:42,51`; `report_routes.py:56,163` | `User.query.get()`/`Category.query.get()` dentro de loop sobre tasks — 1+2N queries |
-| 4 | HIGH | Lógica de negócio e validação dentro de rotas (sem Service real) | `task_routes.py:85-154` | ~70 linhas de validação inline; `services/` existe mas está vazio/morto — separação é cosmética |
-| 5 | MEDIUM | APIs deprecated do SQLAlchemy 1.x (`Query.get`) | | Usado 15× em todo o código; em SQLAlchemy 2.x o idiomático é `db.session.get()` |
-| 6 | MEDIUM | Código morto: `NotificationService` nunca instanciado; helpers nunca chamados | `services/notification_service.py`; `utils/helpers.py` | Dependências declaradas mas não usadas (`marshmallow`, `requests`, `dotenv`); services importam nada |
-| 7 | LOW | Regra "overdue" duplicada em 5+ locais enquanto `Task.is_overdue()` nunca é chamado | `task_routes.py:30-39`; `report_routes.py:33-43` | Método canônico existe mas é ignorado; mudança na regra exige editar 6 lugares |
-| 8 | LOW | `except:` bare engole todas as exceções (inclusive `KeyboardInterrupt`) | `task_routes.py:62,137,204`; `user_routes.py:130,149` | Esconde erros de programação atrás de 500 genérico; sem JSON error handler registrado |
-
-### Síntese da análise
-
-Os 3 projetos compartilham um núcleo de anti-patterns — hardcoded secrets, password
-handling inseguro, God Class, N+1/queries em loop, falta de auth, lógica de negócio
-em rotas, ausência de error handling centralizado — o que valida a viabilidade de
-uma skill agnóstica. A especificidade de cada projeto (monolito flat vs God Object
-vs MVC cosmético) testa a capacidade da skill de detectar problemas além da
-ausência óbvia de pastas.
-
----
-
-## B) Construção da Skill
-
-Decisões de design registradas em [`adr-desafio-3/plano.md`](adr-desafio-3/plano.md).
-
-### Estrutura
-
-A skill fica em `.claude/skills/refactor-arch/` dentro de cada projeto, com
-`SKILL.md` (orquestrador) + 5 arquivos de referência (progressive disclosure) +
-`scripts/validate.sh`:
-
-```
-.claude/skills/refactor-arch/
-├── SKILL.md                          # 3 fases + pausa de confirmação
-├── references/
-│   ├── 01-analysis-heuristics.md     # detecção de stack/domínio/arquitetura
-│   ├── 02-antipatterns-catalog.md    # 12 anti-patterns com sinais de detecção
-│   ├── 03-report-template.md         # formato padronizado do relatório
-│   ├── 04-mvc-guidelines.md          # regras do MVC alvo
-│   └── 05-refactor-playbook.md       # 12 transformações antes/depois
-└── scripts/validate.sh               # smoke test (boot + curl endpoints)
+```text
+Leia TRANSCRICAO.md integralmente. Extraia 4 listas separadas, cada item com
+[hh:mm] + nome do falante:
+1. DECISÕES FECHADAS (alguém diz "decidido/anotado/tá decidido" ou a decisão
+   é confirmada no resumo final [09:47]-[09:48]);
+2. REQUISITOS FUNCIONAIS explícitos (o que o sistema deve fazer);
+3. RESTRIÇÕES/RNFs (valores numéricos: timeouts, limites, intervalos, prazos);
+4. FORA DE ESCOPO: itens explicitamente descartados ("não", "fora de escopo")
+   ou adiados ("próxima fase", "problema do futuro", "observar e decidir depois").
+Regra: se um trecho não se encaixa com certeza numa lista, não inclua.
+Não resuma falas — cite o timestamp exato de cada item.
 ```
 
-### Anti-patterns incluídos (12)
+**Prompt 2 — Ancoragem no código antes do FDD**:
 
-Hardcoded Secrets, Insecure Password Storage, Sensitive Data Exposure, SQL Injection,
-God Class, Debug Mode RCE, Missing AuthN/AuthZ, Business Logic in Routes, N+1 Queries,
-Deprecated API Usage, No Centralized Error Handling, Magic Numbers/DRY. Cada um com
-**sinais de detecção multi-linguagem** (regex + validação contextual) e referência ao
-playbook de transformação correspondente.
-
-### Como a agnósticidade foi garantida
-
-1. **Heurísticas de detecção** fornecem regex para Python E JavaScript em cada
-   anti-pattern (ex: `SECRET_KEY\s*=` e `(password|secret)\s*[:=]\s*['"]`).
-2. **Playbook com antes/depois em ambas as linguagens** — toda transformação tem
-   exemplo em Python (Flask) e Node.js (Express).
-3. **`validate.sh` detecta o runtime** automaticamente (procura `app.py`/`app.js`,
-   `requirements.txt`/`package.json`) e não assume nenhuma linguagem.
-4. **A skill nunca hardcodifica nomes de arquivos** — lê manifestos e estrutura de
-   diretórios.
-
-### Desafios encontrados
-
-- **MVC cosmético vs real**: `task-manager-api` já tinha pastas `models/routes/services`
-  mas services estavam mortos. A heurística de God Class (#5) foi ajustada para detectar
-  "services não importados" como sinal de separação ilusória.
-- **Preservar contratos HTTP**: adicionar auth poderia quebrar endpoints originais. A
-  solução foi proteger endpoints destrutivos/admin (POST/DELETE) e manter GETs públicos,
-  além de adicionar `/health` aberto para o smoke test.
-- **Detecção de Node.js sem Node instalado**: o `validate.sh` foi tornado resiliente com
-  detecção de `python3`/`python`/venvs locais e `node`/`nodejs`.
-
-## C) Resultados
-
-### Resumo dos relatórios de auditoria
-
-| Projeto | CRITICAL | HIGH | MEDIUM | LOW | Total |
-|---------|----------|------|--------|-----|-------|
-| code-smells-project | 5 | 3 | 2 | 2 | 12 |
-| ecommerce-api-legacy | 4 | 3 | 3 | 2 | 12 |
-| task-manager-api | 3 | 4 | 3 | 2 | 12 |
-
-Relatórios completos em `reports/audit-project-{1,2,3}.md`.
-
-### Comparação antes/depois
-
-| Projeto | Arquitetura antes | Arquitetura depois | Validação |
-|---------|-------------------|--------------------|-----------|
-| code-smells-project | Monolito em 4 arquivos (780 LOC), sem camadas | MVC: config/models/controllers/services/routes/middlewares + factory `create_app()` | PASS (8/8) |
-| ecommerce-api-legacy | God Object (`AppManager` com 141 LOC concentrando tudo) | MVC: config/db/models/controllers/services/routes/middlewares + `createApp()` | PASS (4/4) |
-| task-manager-api | MVC cosmético (services mortos, MD5, N+1) | MVC real: config + middlewares, services vivos, werkzeug, joinedload, JWT real | PASS (8/8) |
-
-### Transformações aplicadas (destaques)
-
-- Secrets extraídos para env (`os.environ`/`process.env`) + `.env.example` em todos
-- MD5/base64 → werkzeug.security / crypto.scrypt
-- `password`/`senha` removidos de toda serialização (`to_dict`/`res.json`)
-- SQL concatenado → placeholders parametrizados (`?`)
-- `debug=True` → env-driven (default False) + bind em `127.0.0.1`
-- God Class decomposto em models + controllers + services + routes
-- N+1 → JOIN / `joinedload` / `GROUP BY`
-- `fake-jwt-token` → JWT/HMAC real assinado
-- Error handling centralizado (`@app.errorhandler` / middleware Express)
-- `Query.get` (SQLAlchemy 1.x) → `db.session.get` (2.x)
-
-### Checklist de validação
-
-**code-smells-project** (validate.sh):
-```
-[pass] Application boots without errors
-[pass] GET /health -> 200
-[pass] GET / -> 200
-[pass] GET /produtos -> 200
-[pass] GET /usuarios -> 200
-[pass] GET /pedidos -> 200
-[pass] GET /relatorios/vendas -> 200
-Result: PASS (8/8)
+```text
+Antes de escrever o FDD, liste os caminhos reais do repositório que a feature
+de webhooks vai tocar, lendo o código (não suponha):
+- onde fica a transação de mudança de status do pedido e o que ela faz hoje;
+- o padrão de classes de erro e códigos (AppError/errorCode) já existente;
+- onde estão authenticate/requireRole e o error middleware centralizado;
+- o logger e suas regras de redaction;
+- as convenções do schema.prisma (ids, @@map, índices) e de montagem de rotas.
+Para cada caminho, diga COMO o módulo de webhooks se integra a ele.
+Todo caminho citado será verificado com `ls` antes da entrega — caminho
+inexistente é erro.
 ```
 
-**task-manager-api** (validate.sh):
-```
-[pass] Application boots without errors
-[pass] GET /health -> 200
-[pass] GET / -> 200
-[pass] GET /tasks -> 200
-[pass] GET /users -> 200
-[pass] GET /tasks/stats -> 200
-[pass] GET /reports/summary -> 200
-Result: PASS (8/8)
-```
+**Prompt 3 — Auditoria do Tracker**:
 
-**ecommerce-api-legacy** (validate.sh):
-```
-[pass] node --check src/app.js
-[pass] Application boots without errors
-[pass] GET /health -> 200
-[pass] GET / -> 200
-Result: PASS (4/4)
+```text
+Para cada requisito, decisão, restrição e alternativa dos documentos (PRD,
+RFC, FDD, ADRs), verifique se existe linha no TRACKER.md com Fonte e
+Localização válidas. Para itens TRANSCRICAO, confirme que o timestamp existe
+no arquivo e que a fala atribuída àquele participante realmente contém o item.
+Para itens CODIGO, confirme com `ls` que o caminho existe.
+Itens sem origem: ou remova do documento, ou sinalize explicitamente como
+derivação de uma decisão rastreada.
 ```
 
-### Critérios de aceite (3/3 projetos)
+## Iterações e ajustes
 
-| Critério | code-smells | ecommerce-legacy | task-manager |
-|----------|:-----------:|:-----------------:|:------------:|
-| Fase 1 detecta stack | OK | OK | OK |
-| Fase 2 ≥ 5 findings | 12 | 12 | 12 |
-| Fase 2 ≥ 1 CRITICAL/HIGH | 8 | 7 | 7 |
-| Fase 3 app funciona | PASS | PASS | PASS |
+Foram necessárias **3 iterações principais** (extração → redação → auditoria), com correções concretas:
 
-## D) Como Executar
+1. **Contagens do Tracker estavam erradas no primeiro rascunho**: o resumo de cobertura afirmava "92 linhas (78 TRANSCRICAO)" com base em estimativa. A verificação mecânica com `grep -c` mostrou **95 linhas (81 TRANSCRICAO / 14 CODIGO)** — e revelou que o padrão de contagem incluía indevidamente o cabeçalho da tabela. O resumo foi corrigido pelos números medidos, não pelos supostos.
+2. **Vazamento de texto estranho e link quebrado**: a primeira versão do PRD continha uma palavra em outro idioma no §1 ("能力"), corrigida em revisão; no RFC, a tabela de decisões relacionadas apontava para `adrs/ATR-005-...` (typo) em vez de `ADR-005`, o que quebraria o link exigido pelos critérios de aceite. Ambos corrigidos antes do stage.
+3. **Boilerplate contraditório em `docs/adrs/README.md`**: o README original do diretório de ADRs prescrevia a nomenclatura `0001-titulo.md`, incompatível com o formato exigido pelo desafio (`ADR-NNN-titulo-em-kebab-case.md`). O arquivo foi substituído por um índice dos 6 ADRs produzidos, eliminando a contradição.
+4. **Derivações sinalizadas em vez de disfarçadas**: a matriz de erros do FDD precisava de códigos não citados nominalmente na reunião (ex.: `WEBHOOK_DEAD_LETTER_NOT_FOUND`). Em vez de apresentá-los como se tivessem sido ditos, o FDD (§7) e o Tracker marcam explicitamente que derivam da regra "prefixo `WEBHOOK_` pra tudo do módulo" ([09:29] Larissa) — mantendo a integridade da rastreabilidade.
 
-Pré-requisitos:
+## Como navegar a entrega
 
-- [Claude Code](https://code.claude.com/docs/en) instalado e autenticado
-- Python 3.10+ (projetos 1 e 3)
-- Node.js 18+ (projeto 2 — necessário para validação). Recomendado via nvm:
-  `export NVM_DIR="$HOME/.config/nvm" && source "$NVM_DIR/nvm.sh" && nvm install --lts`
+Ordem sugerida de leitura:
 
-Execução em cada projeto:
+| # | Arquivo | O que é |
+| --- | --- | --- |
+| 0 | [`TRANSCRICAO.md`](TRANSCRICAO.md) | Fonte primária: a reunião literal (não alterada) |
+| 1 | [`docs/PRD.md`](docs/PRD.md) | Por que e o quê: problema, público, escopo (incl. fora de escopo), requisitos, métricas, riscos |
+| 2 | [`docs/RFC.md`](docs/RFC.md) | Como pretendemos resolver: proposta técnica concisa, alternativas descartadas, questões em aberto |
+| 3 | [`docs/adrs/`](docs/adrs/README.md) | As 6 decisões fechadas, uma por ADR (outbox, worker/polling, retry+DLQ, HMAC, at-least-once, reuso de padrões) |
+| 4 | [`docs/FDD.md`](docs/FDD.md) | Como construir: modelo de dados, fluxos, contratos HTTP, matriz de erros `WEBHOOK_*`, resiliência, observabilidade e integração com o código existente |
+| 5 | [`docs/TRACKER.md`](docs/TRACKER.md) | Rastreabilidade: cada item do pacote → origem na transcrição (`[hh:mm] Nome`) ou no código (caminho do arquivo) |
 
-```bash
-# Projeto 1 — Python/Flask (E-commerce)
-cd code-smells-project
-claude "/refactor-arch"
-
-# Projeto 2 — Node.js/Express (LMS)
-cd ../ecommerce-api-legacy
-claude "/refactor-arch"
-
-# Projeto 3 — Python/Flask (Task Manager)
-cd ../task-manager-api
-claude "/refactor-arch"
-```
-
-Validação pós-refatoração (executada automaticamente na Fase 3):
-
-```bash
-# A skill roda scripts/validate.sh, que:
-# 1. detecta o runtime (Python/Node) e o executável (python3/venv/node)
-# 2. sobe a aplicação em background numa porta livre
-# 3. faz curl nos endpoints originais mapeados na Fase 1
-# 4. verifica status HTTP 2xx/3xx e derruba a app
-# 5. imprime [pass]/[fail] por cheque + resultado final
-
-# Para rodar manualmente:
-bash .claude/skills/refactor-arch/scripts/validate.sh /produtos /usuarios
-```
-
-Para rodar as aplicações refatoradas manualmente:
-
-```bash
-# Projeto 1
-cd code-smells-project && pip install -r requirements.txt && python app.py
-
-# Projeto 2 (Node via nvm)
-cd ecommerce-api-legacy && npm install && node src/app.js
-
-# Projeto 3
-cd task-manager-api && pip install -r requirements.txt && python app.py
-```
-
-Relatórios de auditoria em `reports/audit-project-{1,2,3}.md`.
+O código da aplicação (`src/`, `prisma/`, `tests/`) não foi modificado — serve de contexto e referência, como exige o enunciado.
